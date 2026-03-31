@@ -37,13 +37,9 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#C41E3A] to-[#8B1A2B] p-8 text-white shadow-xl">
-        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
-        <div className="absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-white/5 blur-2xl" />
-        <div className="relative">
-          <h1 className="text-3xl font-black tracking-tight">Tableau de bord</h1>
-          <p className="text-white/70 mt-1">Vue d&apos;ensemble de votre activite</p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Tableau de bord</h1>
+        <p className="text-gray-500 text-sm mt-1">Vue d&apos;ensemble de votre activite</p>
       </div>
 
       {/* KPIs */}
