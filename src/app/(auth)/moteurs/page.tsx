@@ -49,8 +49,8 @@ export default function MoteursPage() {
     setLoading(true);
     try {
       const { data, error } = await supabase.rpc("search_moteurs", {
-        p_search: search || null,
-        p_statut: statut === "Tous" ? null : statut,
+        p_search: search || '',
+        p_statut: statut === "Tous" ? '' : statut,
         p_limit: 500,
       });
       if (error) {
