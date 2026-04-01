@@ -33,7 +33,7 @@ type ExpeditionRow = {
 type ExpeditionMoteur = {
   n_moteur: number;
   prix_vente_moteur: number | null;
-  tbl_moteurs: { code_moteur: string | null; num_serie: string | null } | null;
+  tbl_moteurs: { code_moteur: string | null; num_serie: string | null; tbl_types_moteurs?: { nom_type_moteur: string } | null } | null;
 };
 
 /* ---- Stats ---- */
@@ -217,7 +217,7 @@ export default function HistoriquePage() {
           // Stock rotation: fetch all stock moteurs + their last sale
           const { data: stockData } = await supabase
             .from("v_moteurs_dispo")
-            .select("n_moteur, code_moteur, marque, date_entree")
+            .select("n_moteur, code_moteur, marque, date_entree, tbl_types_moteurs(nom_type_moteur)")
             .eq("est_disponible", 1)
             .limit(500);
           if (cancelled) return;
@@ -251,7 +251,7 @@ export default function HistoriquePage() {
     setRecDetailLoading(true);
     const { data } = await supabase
       .from("tbl_moteurs")
-      .select("n_moteur, code_moteur, num_serie, prix_achat_moteur, etat_moteur")
+      .select("n_moteur, code_moteur, num_serie, prix_achat_moteur, etat_moteur, tbl_types_moteurs(nom_type_moteur)")
       .eq("num_reception", id);
     setRecDetailMoteurs(data || []);
     setRecDetailLoading(false);
@@ -263,7 +263,7 @@ export default function HistoriquePage() {
     setExpDetailLoading(true);
     const { data } = await supabase
       .from("tbl_expeditions_moteurs")
-      .select("n_moteur, prix_vente_moteur, tbl_moteurs(code_moteur, num_serie)")
+      .select("n_moteur, prix_vente_moteur, tbl_moteurs(code_moteur, num_serie, tbl_types_moteurs(nom_type_moteur))")
       .eq("n_expedition", id);
     setExpDetailMoteurs((data || []) as unknown as ExpeditionMoteur[]);
     setExpDetailLoading(false);
@@ -405,7 +405,7 @@ export default function HistoriquePage() {
                       {recDetailMoteurs.map((m: any) => (
                         <tr key={m.n_moteur} className="hover:bg-gray-50">
                           <td className="px-3 py-2 font-mono">{m.n_moteur}</td>
-                          <td className="px-3 py-2 font-semibold">{m.code_moteur || "—"}</td>
+                          <td className="px-3 py-2 font-semibold">{m.tbl_types_moteurs?.nom_type_moteur || m.code_moteur || "—"}</td>
                           <td className="px-3 py-2 text-gray-500">{m.num_serie || "—"}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{m.prix_achat_moteur ? `${Math.round(m.prix_achat_moteur)} EUR` : "—"}</td>
                           <td className="px-3 py-2 text-center">{m.etat_moteur || "—"}</td>
@@ -507,7 +507,7 @@ export default function HistoriquePage() {
                       {expDetailMoteurs.map((m) => (
                         <tr key={m.n_moteur} className="hover:bg-gray-50">
                           <td className="px-3 py-2 font-mono">{m.n_moteur}</td>
-                          <td className="px-3 py-2 font-semibold">{m.tbl_moteurs?.code_moteur || "—"}</td>
+                          <td className="px-3 py-2 font-semibold">{m.tbl_moteurs?.tbl_types_moteurs?.nom_type_moteur || m.tbl_moteurs?.code_moteur || "—"}</td>
                           <td className="px-3 py-2 text-gray-500">{m.tbl_moteurs?.num_serie || "—"}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{m.prix_vente_moteur ? `${Math.round(m.prix_vente_moteur).toLocaleString("fr-FR")} EUR` : "—"}</td>
                         </tr>
@@ -715,7 +715,7 @@ export default function HistoriquePage() {
                     <tbody className="divide-y divide-gray-100">
                       {stockRotation.fast.slice(0, 20).map((m: any) => (
                         <tr key={m.n_moteur} className="hover:bg-gray-50">
-                          <td className="px-3 py-2 font-semibold">{m.code_moteur || "—"}</td>
+                          <td className="px-3 py-2 font-semibold">{m.tbl_types_moteurs?.nom_type_moteur || m.code_moteur || "—"}</td>
                           <td className="px-3 py-2">{m.marque || "—"}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{m.jours_en_stock}j</td>
                         </tr>
@@ -744,7 +744,7 @@ export default function HistoriquePage() {
                     <tbody className="divide-y divide-gray-100">
                       {stockRotation.slow.slice(0, 20).map((m: any) => (
                         <tr key={m.n_moteur} className="hover:bg-gray-50">
-                          <td className="px-3 py-2 font-semibold">{m.code_moteur || "—"}</td>
+                          <td className="px-3 py-2 font-semibold">{m.tbl_types_moteurs?.nom_type_moteur || m.code_moteur || "—"}</td>
                           <td className="px-3 py-2">{m.marque || "—"}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{m.jours_en_stock}j</td>
                         </tr>
@@ -773,7 +773,7 @@ export default function HistoriquePage() {
                     <tbody className="divide-y divide-gray-100">
                       {stockRotation.dead.slice(0, 30).map((m: any) => (
                         <tr key={m.n_moteur} className="hover:bg-gray-50">
-                          <td className="px-3 py-2 font-semibold">{m.code_moteur || "—"}</td>
+                          <td className="px-3 py-2 font-semibold">{m.tbl_types_moteurs?.nom_type_moteur || m.code_moteur || "—"}</td>
                           <td className="px-3 py-2">{m.marque || "—"}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{m.jours_en_stock}j</td>
                         </tr>

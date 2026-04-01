@@ -55,7 +55,7 @@ export default function VentesPage() {
   const topTypes = useMemo(() => {
     const map: Record<string, number> = {};
     rawData.forEach((r) => {
-      const code = (r.type_moteur || "").substring(0, 3).toUpperCase();
+      const code = (r.type_moteur || "").toUpperCase();
       if (code) map[code] = (map[code] || 0) + Number(r.nb_vendus);
     });
     return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 20).map(([type_moteur, nb_vendus]) => ({ type_moteur, nb_vendus }));

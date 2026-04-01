@@ -366,17 +366,17 @@ function TendancesTab() {
       const [{ data: recData }, { data: expData }] = await Promise.all([
         supabase
           .from("v_moteurs_dispo")
-          .select("code_moteur, prix_achat_moteur, date_entree_stock")
+          .select("type_nom, prix_achat_moteur, date_entree_stock")
           .gte("date_entree_stock", cutoff.toISOString())
           .not("prix_achat_moteur", "is", null)
-          .not("code_moteur", "is", null)
+          .not("type_nom", "is", null)
           .limit(5000),
         supabase
           .from("tbl_expeditions_moteurs")
           .select("code_moteur, prix_vente_moteur, date_validation")
           .gte("date_validation", cutoff.toISOString())
           .not("prix_vente_moteur", "is", null)
-          .not("code_moteur", "is", null)
+          .not("type_nom", "is", null)
           .limit(5000),
       ]);
 
@@ -384,10 +384,10 @@ function TendancesTab() {
       const recentCutoff = new Date();
       recentCutoff.setMonth(recentCutoff.getMonth() - windowSize);
 
-      // Group by code_moteur for purchases
+      // Group by type_nom for purchases
       const achatByCode: Record<string, { recent: number[]; old: number[] }> = {};
       (recData || []).forEach((r: any) => {
-        const code = (r.code_moteur || "").substring(0, 6).toUpperCase();
+        const code = (r.type_nom || "").toUpperCase();
         if (!code) return;
         if (!achatByCode[code]) achatByCode[code] = { recent: [], old: [] };
         const d = new Date(r.date_entree_stock);
@@ -395,10 +395,10 @@ function TendancesTab() {
         else achatByCode[code].old.push(r.prix_achat_moteur);
       });
 
-      // Group by code_moteur for sales
+      // Group by code_moteur for sales (from expeditions table)
       const venteByCode: Record<string, { recent: number[]; old: number[] }> = {};
       (expData || []).forEach((e: any) => {
-        const code = (e.code_moteur || "").substring(0, 6).toUpperCase();
+        const code = (e.type_nom || "").toUpperCase();
         if (!code) return;
         if (!venteByCode[code]) venteByCode[code] = { recent: [], old: [] };
         const d = new Date(e.date_validation);
@@ -449,7 +449,7 @@ function TendancesTab() {
     const { data } = await supabase
       .from("v_moteurs_dispo")
       .select("date_entree_stock, prix_achat_moteur")
-      .ilike("code_moteur", `${code}%`)
+      .ilike("type_nom", `${code}%`)
       .not("prix_achat_moteur", "is", null)
       .order("date_entree_stock", { ascending: true })
       .limit(100);
