@@ -83,33 +83,15 @@ export default function HistoriquePage() {
           const rows = (data || []) as unknown as ReceptionRow[];
           setReceptions(rows);
 
-          // Build monthly charts
-          const byMonth: Record<string, { receptions: number; moteurs: number }> = {};
-          rows.forEach((r) => {
-            const k = r.date_achat?.substring(0, 7) || "Inconnu";
-            if (!byMonth[k]) byMonth[k] = { receptions: 0, moteurs: 0 };
-            byMonth[k].receptions++;
-          });
-          // Get moteurs count per reception
-          const recIds = rows.map((r) => r.n_reception);
-          if (recIds.length > 0) {
-            const { data: moteurs } = await supabase
-              .from("tbl_moteurs")
-              .select("num_reception")
-              .in("num_reception", recIds.slice(0, 1000));
-            if (cancelled) return;
-            (moteurs || []).forEach((m: any) => {
-              const rec = rows.find((r) => r.n_reception === m.num_reception);
-              if (rec) {
-                const k = rec.date_achat?.substring(0, 7) || "Inconnu";
-                if (byMonth[k]) byMonth[k].moteurs++;
-              }
-            });
-          }
+          // Build monthly charts via RPC (no row limit)
+          const { data: recParMois } = await supabase.rpc("get_receptions_par_mois", { p_months: 36 });
+          if (cancelled) return;
           setRecMoteurs(
-            Object.entries(byMonth)
-              .sort((a, b) => a[0].localeCompare(b[0]))
-              .map(([mois, v]) => ({ mois, ...v }))
+            (recParMois || []).map((r: any) => ({
+              mois: r.mois,
+              receptions: Number(r.nb_receptions),
+              moteurs: Number(r.nb_moteurs),
+            }))
           );
 
         } else if (tab === "Expeditions") {
@@ -128,90 +110,37 @@ export default function HistoriquePage() {
           cutoff12.setMonth(cutoff12.getMonth() - 12);
           const cutoffStr = cutoff12.toISOString().split("T")[0];
 
-          // Fetch expeditions moteurs for CA
-          const { data: expMot } = await supabase
-            .from("tbl_expeditions_moteurs")
-            .select("date_validation, prix_vente_moteur, n_moteur")
-            .gte("date_validation", cutoffStr);
-
-          if (cancelled) return;
-          const expMotRows = expMot || [];
-
-          // Fetch achat prices
-          const motorIds = [...new Set(expMotRows.map((r: any) => r.n_moteur).filter(Boolean))];
-          let achatMap: Record<number, number> = {};
-          if (motorIds.length > 0) {
-            for (let i = 0; i < motorIds.length; i += 1000) {
-              const batch = motorIds.slice(i, i + 1000);
-              const { data: mots } = await supabase
-                .from("tbl_moteurs")
-                .select("n_moteur, prix_achat_moteur")
-                .in("n_moteur", batch);
-              (mots || []).forEach((m: any) => { achatMap[m.n_moteur] = m.prix_achat_moteur || 0; });
-            }
-          }
+          // All stats via RPCs (no row limit)
+          const [caRes, clientsRes, fournRes] = await Promise.all([
+            supabase.rpc("get_historique_ca_mensuel", { p_months: 12 }),
+            supabase.rpc("get_top_clients", { p_months: 12, p_limit: 10 }),
+            supabase.rpc("get_top_fournisseurs", { p_months: 12, p_limit: 10 }),
+          ]);
           if (cancelled) return;
 
-          // Monthly CA + marge
-          const byMonth: Record<string, { ca_vente: number; ca_achat: number }> = {};
-          expMotRows.forEach((r: any) => {
-            const k = r.date_validation?.substring(0, 7) || "";
-            if (!k) return;
-            if (!byMonth[k]) byMonth[k] = { ca_vente: 0, ca_achat: 0 };
-            byMonth[k].ca_vente += r.prix_vente_moteur || 0;
-            byMonth[k].ca_achat += achatMap[r.n_moteur] || 0;
-          });
           setMonthlyCA(
-            Object.entries(byMonth)
-              .sort((a, b) => a[0].localeCompare(b[0]))
-              .map(([mois, v]) => ({
-                mois,
-                ca_vente: Math.round(v.ca_vente),
-                ca_achat: Math.round(v.ca_achat),
-                marge: Math.round(v.ca_vente - v.ca_achat),
-              }))
+            (caRes.data || []).map((r: any) => ({
+              mois: r.mois,
+              ca_vente: Math.round(Number(r.ca_vente)),
+              ca_achat: Math.round(Number(r.ca_achat)),
+              marge: Math.round(Number(r.marge)),
+            }))
           );
 
-          // Top 10 clients
-          const { data: expAll } = await supabase
-            .from("tbl_expeditions")
-            .select("n_client, montant_ht, tbl_clients(nom_client)")
-            .gte("date_validation", cutoffStr);
-          if (cancelled) return;
-
-          const clientMap: Record<string, { total: number; count: number }> = {};
-          (expAll || []).forEach((e: any) => {
-            const nom = e.tbl_clients?.nom_client || "Inconnu";
-            if (!clientMap[nom]) clientMap[nom] = { total: 0, count: 0 };
-            clientMap[nom].total += e.montant_ht || 0;
-            clientMap[nom].count++;
-          });
           setTopClients(
-            Object.entries(clientMap)
-              .map(([nom, v]) => ({ nom, ...v }))
-              .sort((a, b) => b.total - a.total)
-              .slice(0, 10)
+            (clientsRes.data || []).map((r: any) => ({
+              nom: r.nom,
+              total: Number(r.total),
+              count: Number(r.count),
+            }))
           );
 
-          // Top 10 fournisseurs
-          const { data: recAll } = await supabase
-            .from("tbl_receptions")
-            .select("montant_ht, tbl_fournisseurs(nom_fournisseur)")
-            .gte("date_achat", cutoffStr);
-          if (cancelled) return;
-
-          const fournMap: Record<string, { total: number; count: number }> = {};
-          (recAll || []).forEach((r: any) => {
-            const nom = r.tbl_fournisseurs?.nom_fournisseur || "Inconnu";
-            if (!fournMap[nom]) fournMap[nom] = { total: 0, count: 0 };
-            fournMap[nom].total += r.montant_ht || 0;
-            fournMap[nom].count++;
-          });
           setTopFournisseurs(
-            Object.entries(fournMap)
-              .map(([nom, v]) => ({ nom, ...v }))
-              .sort((a, b) => b.total - a.total)
-              .slice(0, 10)
+            (fournRes.data || []).map((r: any) => ({
+              nom: r.nom,
+              total: Number(r.total),
+              count: Number(r.count),
+            }))
           );
 
           // Stock rotation: fetch all stock moteurs + their last sale

@@ -22,20 +22,14 @@ function StockTab() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      // Top 15 marques en stock
-      const { data: moteurs } = await supabase
-        .from("v_moteurs_dispo")
-        .select("marque, energie, est_disponible, date_entree_stock")
-        .eq("est_disponible", 1)
-        .limit(5000);
+      // Stock repartition via RPC (no row limit)
+      const { data: repartition } = await supabase.rpc("get_stock_repartition");
 
       const byMarqueMap: Record<string, number> = {};
       const byEnergieMap: Record<string, number> = {};
-      (moteurs || []).forEach((m: any) => {
-        const marque = m.marque || "Inconnu";
-        const energie = m.energie || "Inconnu";
-        byMarqueMap[marque] = (byMarqueMap[marque] || 0) + 1;
-        byEnergieMap[energie] = (byEnergieMap[energie] || 0) + 1;
+      (repartition || []).forEach((r: any) => {
+        byMarqueMap[r.marque] = (byMarqueMap[r.marque] || 0) + Number(r.count);
+        byEnergieMap[r.energie] = (byEnergieMap[r.energie] || 0) + Number(r.count);
       });
 
       setTopMarques(
@@ -130,15 +124,13 @@ function PrixTab() {
   // Load filter options
   useEffect(() => {
     async function loadFilters() {
-      const { data } = await supabase
-        .from("v_moteurs_dispo")
-        .select("energie, marque")
-        .limit(5000);
+      // Use stock repartition RPC to get distinct values (no row limit)
+      const { data } = await supabase.rpc("get_stock_repartition");
       const eSet = new Set<string>();
       const mSet = new Set<string>();
       (data || []).forEach((d: any) => {
-        if (d.energie) eSet.add(d.energie);
-        if (d.marque) mSet.add(d.marque);
+        if (d.energie && d.energie !== 'Inconnu') eSet.add(d.energie);
+        if (d.marque && d.marque !== 'Inconnu') mSet.add(d.marque);
       });
       setEnergies([...eSet].sort());
       setMarques([...mSet].sort());
