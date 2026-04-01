@@ -389,7 +389,7 @@ export default function PiecesPage() {
               >
                 <option value="">Selectionner...</option>
                 {pieces.map((p) => (
-                  <option key={p.id} value={p.reference || p.n_piece}>
+                  <option key={p.id} value={p.reference || p.id}>
                     {p.reference} - {p.modele} (stock: {p.stock ?? 0})
                   </option>
                 ))}
