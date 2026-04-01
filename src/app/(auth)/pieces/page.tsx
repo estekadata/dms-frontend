@@ -13,16 +13,13 @@ import {
 } from "recharts";
 
 type Piece = {
-  n_piece: number;
+  id: number;
   reference?: string;
-  designation?: string;
+  modele?: string;
   marque?: string;
   categorie?: string;
-  quantite_stock?: number;
-  quantite_min?: number;
-  prix_achat?: number;
-  prix_vente?: number;
-  emplacement?: string;
+  stock?: number;
+  date_import?: string;
 };
 
 export default function PiecesPage() {
@@ -70,12 +67,12 @@ export default function PiecesPage() {
       setLoading(true);
       let query = supabase
         .from("tbl_pieces_detachees")
-        .select("n_piece, reference, designation, marque, categorie, quantite_stock, quantite_min, prix_achat, prix_vente, emplacement")
-        .order("designation", { ascending: true })
+        .select("id, reference, modele, marque, categorie, stock, date_import")
+        .order("reference", { ascending: true })
         .limit(500);
 
       if (search) {
-        query = query.or(`reference.ilike.%${search}%,designation.ilike.%${search}%,marque.ilike.%${search}%`);
+        query = query.or(`reference.ilike.%${search}%,modele.ilike.%${search}%,marque.ilike.%${search}%`);
       }
       if (selectedCats.length > 0) {
         query = query.in("categorie", selectedCats);
@@ -95,7 +92,7 @@ export default function PiecesPage() {
     const { data } = await supabase
       .from("tbl_pieces_mouvements")
       .select("*")
-      .eq("n_piece", piece.n_piece)
+      .eq("n_piece", piece.id)
       .order("date_mouvement", { ascending: true })
       .limit(200);
 
@@ -127,7 +124,7 @@ export default function PiecesPage() {
     if (!formRef || !formQty) return;
     setFormSubmitting(true);
 
-    const piece = pieces.find((p) => p.reference === formRef || p.n_piece === parseInt(formRef));
+    const piece = pieces.find((p) => p.reference === formRef || p.id === parseInt(formRef));
     if (!piece) {
       alert("Reference introuvable");
       setFormSubmitting(false);
@@ -136,7 +133,7 @@ export default function PiecesPage() {
 
     const qty = parseInt(formQty);
     const { error: mvtError } = await supabase.from("tbl_pieces_mouvements").insert({
-      n_piece: piece.n_piece,
+      n_piece: piece.id,
       type_mouvement: formType,
       quantite: formType === "entree" ? qty : -qty,
       client: formClient || null,
@@ -149,11 +146,11 @@ export default function PiecesPage() {
       return;
     }
 
-    const newStock = (piece.quantite_stock || 0) + (formType === "entree" ? qty : -qty);
+    const newStock = (piece.stock || 0) + (formType === "entree" ? qty : -qty);
     const { error: updError } = await supabase
       .from("tbl_pieces_detachees")
-      .update({ quantite_stock: newStock })
-      .eq("n_piece", piece.n_piece);
+      .update({ stock: newStock })
+      .eq("n_piece", piece.id);
 
     if (updError) {
       alert("Erreur mise a jour stock: " + updError.message);
@@ -161,7 +158,7 @@ export default function PiecesPage() {
       setFormRef(""); setFormQty(""); setFormClient("");
       // Reload
       setPieces((prev) =>
-        prev.map((p) => (p.n_piece === piece.n_piece ? { ...p, quantite_stock: newStock } : p))
+        prev.map((p) => (p.id === piece.id ? { ...p, stock: newStock } : p))
       );
     }
     setFormSubmitting(false);
@@ -177,8 +174,8 @@ export default function PiecesPage() {
     // Get all pieces with stock > 0
     const { data: allPieces } = await supabase
       .from("tbl_pieces_detachees")
-      .select("n_piece, reference, designation, quantite_stock")
-      .gt("quantite_stock", 0)
+      .select("id, reference, modele, stock")
+      .gt("stock", 0)
       .limit(500);
 
     if (!allPieces || allPieces.length === 0) { setInactiveParts([]); return; }
@@ -190,14 +187,14 @@ export default function PiecesPage() {
       .gte("date_mouvement", cutoff.toISOString());
 
     const activeIds = new Set((recentMvts || []).map((m: any) => m.n_piece));
-    setInactiveParts(allPieces.filter((p: any) => !activeIds.has(p.n_piece)));
+    setInactiveParts(allPieces.filter((p: any) => !activeIds.has(p.id)));
   }
 
   // KPIs
   const totalRefs = pieces.length;
-  const totalStock = pieces.reduce((s, p) => s + (p.quantite_stock || 0), 0);
+  const totalStock = pieces.reduce((s, p) => s + (p.stock || 0), 0);
   const catCount = new Set(pieces.map((p) => p.categorie).filter(Boolean)).size;
-  const zeroStock = pieces.filter((p) => (p.quantite_stock || 0) === 0).length;
+  const zeroStock = pieces.filter((p) => (p.stock || 0) === 0).length;
 
   function stockColor(qty: number) {
     if (qty === 0) return "text-red-600 bg-red-50";
@@ -283,20 +280,18 @@ export default function PiecesPage() {
               <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
                 <tr>
                   <th className="px-4 py-3 text-left">Reference</th>
-                  <th className="px-4 py-3 text-left">Designation</th>
+                  <th className="px-4 py-3 text-left">Modele</th>
                   <th className="px-4 py-3 text-left">Marque</th>
+                  <th className="px-4 py-3 text-left">Categorie</th>
                   <th className="px-4 py-3 text-center">Stock</th>
-                  <th className="px-4 py-3 text-right">Prix achat</th>
-                  <th className="px-4 py-3 text-right">Prix vente</th>
-                  <th className="px-4 py-3 text-left">Emplacement</th>
                   <th className="px-4 py-3 text-center">Historique</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {pieces.map((p) => {
-                  const qty = p.quantite_stock ?? 0;
+                  const qty = p.stock ?? 0;
                   return (
-                    <tr key={p.n_piece} className="hover:bg-gray-50">
+                    <tr key={p.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 font-mono text-xs">{p.reference || "—"}</td>
                       <td className="px-4 py-3 font-medium">{p.designation || "—"}</td>
                       <td className="px-4 py-3 text-gray-600">{p.marque || "—"}</td>
@@ -331,7 +326,7 @@ export default function PiecesPage() {
         <div className="bg-white rounded-2xl p-6 shadow-sm mb-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-gray-700">
-              Historique mouvements : {selectedRef.reference || selectedRef.designation}
+              Historique mouvements : {selectedRef.reference || selectedRef.modele}
             </h3>
             <button onClick={() => setSelectedRef(null)} className="text-gray-400 hover:text-gray-600">Fermer</button>
           </div>
@@ -397,8 +392,8 @@ export default function PiecesPage() {
               >
                 <option value="">Selectionner...</option>
                 {pieces.map((p) => (
-                  <option key={p.n_piece} value={p.reference || p.n_piece}>
-                    {p.reference} - {p.designation} (stock: {p.quantite_stock ?? 0})
+                  <option key={p.id} value={p.reference || p.n_piece}>
+                    {p.reference} - {p.modele} (stock: {p.stock ?? 0})
                   </option>
                 ))}
               </select>
@@ -460,11 +455,11 @@ export default function PiecesPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {inactiveParts.map((p: any) => (
-                      <tr key={p.n_piece} className="hover:bg-gray-50">
+                      <tr key={p.id} className="hover:bg-gray-50">
                         <td className="px-4 py-2 font-mono text-xs">{p.reference || "—"}</td>
                         <td className="px-4 py-2">{p.designation || "—"}</td>
                         <td className="px-4 py-2 text-center">
-                          <span className="text-amber-600 font-semibold">{p.quantite_stock}</span>
+                          <span className="text-amber-600 font-semibold">{p.stock}</span>
                         </td>
                       </tr>
                     ))}
