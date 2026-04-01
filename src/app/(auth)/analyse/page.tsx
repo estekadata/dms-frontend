@@ -301,55 +301,29 @@ function TendancesTab() {
       const cutoff = new Date();
       cutoff.setMonth(cutoff.getMonth() - windowSize * 2);
 
-      // Use RPC to get all data server-side (no 1000 row limit)
-      const { data: allData } = await supabase.rpc("get_tendances_prix", { p_window_months: windowSize });
-
-      const now = new Date();
-      const recentCutoff = new Date();
-      recentCutoff.setMonth(recentCutoff.getMonth() - windowSize);
-
-      // Group by nom_type_moteur for purchases
-      const achatByCode: Record<string, { recent: number[]; old: number[] }> = {};
-      const venteByCode: Record<string, { recent: number[]; old: number[] }> = {};
-      (allData || []).forEach((r: any) => {
-        const code = (r.nom_type_moteur || "").toUpperCase();
-        if (!code) return;
-        const d = new Date(r.date_op);
-        if (r.source === "achat") {
-          if (!achatByCode[code]) achatByCode[code] = { recent: [], old: [] };
-          if (d >= recentCutoff) achatByCode[code].recent.push(r.prix);
-          else achatByCode[code].old.push(r.prix);
-        } else {
-          if (!venteByCode[code]) venteByCode[code] = { recent: [], old: [] };
-          if (d >= recentCutoff) venteByCode[code].recent.push(r.prix);
-          else venteByCode[code].old.push(r.prix);
-        }
-      });
-
-      const avg = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+      // Use RPC to get pre-aggregated tendances (no row limit)
+      const { data: tendData } = await supabase.rpc("get_tendances_prix", { p_window_months: windowSize, p_min_obs: minObs });
 
       const achatsHausse: any[] = [];
       const achatsBaisse: any[] = [];
-      Object.entries(achatByCode).forEach(([code, v]) => {
-        if (v.recent.length < minObs || v.old.length < minObs) return;
-        const recentAvg = avg(v.recent);
-        const oldAvg = avg(v.old);
-        const delta = ((recentAvg - oldAvg) / oldAvg) * 100;
-        const entry = { code, recentAvg: Math.round(recentAvg), oldAvg: Math.round(oldAvg), delta: Math.round(delta), count: v.recent.length + v.old.length };
-        if (delta > 3) achatsHausse.push(entry);
-        else if (delta < -3) achatsBaisse.push(entry);
-      });
-
       const ventesHausse: any[] = [];
       const ventesBaisse: any[] = [];
-      Object.entries(venteByCode).forEach(([code, v]) => {
-        if (v.recent.length < minObs || v.old.length < minObs) return;
-        const recentAvg = avg(v.recent);
-        const oldAvg = avg(v.old);
-        const delta = ((recentAvg - oldAvg) / oldAvg) * 100;
-        const entry = { code, recentAvg: Math.round(recentAvg), oldAvg: Math.round(oldAvg), delta: Math.round(delta), count: v.recent.length + v.old.length };
-        if (delta > 3) ventesHausse.push(entry);
-        else if (delta < -3) ventesBaisse.push(entry);
+
+      (tendData || []).forEach((r: any) => {
+        const entry = {
+          code: r.nom_type_moteur,
+          recentAvg: Number(r.recent_avg),
+          oldAvg: Number(r.old_avg),
+          delta: Number(r.delta_pct),
+          count: Number(r.recent_count) + Number(r.old_count),
+        };
+        if (r.source === "achat") {
+          if (entry.delta > 0) achatsHausse.push(entry);
+          else achatsBaisse.push(entry);
+        } else {
+          if (entry.delta > 0) ventesHausse.push(entry);
+          else ventesBaisse.push(entry);
+        }
       });
 
       achatsHausse.sort((a, b) => b.delta - a.delta);
