@@ -46,34 +46,9 @@ function StockTab() {
       );
       setByEnergie(Object.entries(byEnergieMap).map(([name, value]) => ({ name, value })));
 
-      // Stock evolution: entries/exits by month (last 12 months)
-      const cutoff = new Date();
-      cutoff.setMonth(cutoff.getMonth() - 12);
-
-      const [{ data: recData }, { data: expData }] = await Promise.all([
-        supabase.from("v_receptions").select("date_reception, nb_moteurs").gte("date_reception", cutoff.toISOString()),
-        supabase.from("tbl_expeditions_moteurs").select("date_validation").gte("date_validation", cutoff.toISOString()),
-      ]);
-
-      const evoMap: Record<string, { entrees: number; sorties: number }> = {};
-      (recData || []).forEach((r: any) => {
-        const k = r.date_reception?.substring(0, 7) || "";
-        if (!k) return;
-        if (!evoMap[k]) evoMap[k] = { entrees: 0, sorties: 0 };
-        evoMap[k].entrees += r.nb_moteurs || 1;
-      });
-      (expData || []).forEach((e: any) => {
-        const k = e.date_validation?.substring(0, 7) || "";
-        if (!k) return;
-        if (!evoMap[k]) evoMap[k] = { entrees: 0, sorties: 0 };
-        evoMap[k].sorties++;
-      });
-
-      setEvolution(
-        Object.entries(evoMap)
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([mois, v]) => ({ mois, ...v }))
-      );
+      // Stock evolution: entries/exits by month (RPC - no row limit)
+      const { data: evoData } = await supabase.rpc("get_stock_evolution", { p_months: 12 });
+      setEvolution((evoData || []).map((r: any) => ({ mois: r.mois, entrees: Number(r.entrees), sorties: Number(r.sorties) })));
       setLoading(false);
     }
     load();
@@ -175,57 +150,20 @@ function PrixTab() {
   useEffect(() => {
     async function loadPrices() {
       setLoading(true);
-      const cutoff = new Date();
-      cutoff.setMonth(cutoff.getMonth() - period);
-
-      // Get purchase data
-      let recQuery = supabase
-        .from("v_moteurs_dispo")
-        .select("date_entree_stock, prix_achat_moteur, energie, marque")
-        .gte("date_entree_stock", cutoff.toISOString())
-        .not("prix_achat_moteur", "is", null);
-
-      if (energieFilter) recQuery = recQuery.eq("energie", energieFilter);
-      if (marqueFilter) recQuery = recQuery.eq("marque", marqueFilter);
-
-      // Get sale data
-      let expQuery = supabase
-        .from("tbl_expeditions_moteurs")
-        .select("date_validation, prix_vente_moteur")
-        .gte("date_validation", cutoff.toISOString())
-        .not("prix_vente_moteur", "is", null);
-
-      const [{ data: recData }, { data: expData }] = await Promise.all([recQuery, expQuery]);
-
-      const monthMap: Record<string, { achatSum: number; achatCount: number; venteSum: number; venteCount: number }> = {};
-
-      (recData || []).forEach((r: any) => {
-        const k = r.date_entree_stock?.substring(0, 7) || "";
-        if (!k) return;
-        if (!monthMap[k]) monthMap[k] = { achatSum: 0, achatCount: 0, venteSum: 0, venteCount: 0 };
-        monthMap[k].achatSum += r.prix_achat_moteur || 0;
-        monthMap[k].achatCount++;
+      const { data, error } = await supabase.rpc("get_prix_evolution", {
+        p_months: period,
+        p_energie: energieFilter || "",
+        p_marque: marqueFilter || "",
       });
-
-      (expData || []).forEach((e: any) => {
-        const k = e.date_validation?.substring(0, 7) || "";
-        if (!k) return;
-        if (!monthMap[k]) monthMap[k] = { achatSum: 0, achatCount: 0, venteSum: 0, venteCount: 0 };
-        monthMap[k].venteSum += e.prix_vente_moteur || 0;
-        monthMap[k].venteCount++;
-      });
-
-      const result = Object.entries(monthMap)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([mois, v]) => ({
-          mois,
-          prixAchatMoyen: v.achatCount ? Math.round(v.achatSum / v.achatCount) : null,
-          prixVenteMoyen: v.venteCount ? Math.round(v.venteSum / v.venteCount) : null,
-          nbAchats: v.achatCount,
-          nbVentes: v.venteCount,
-        }));
-
-      setChartData(result);
+      if (!error && data) {
+        setChartData((data as any[]).map((r) => ({
+          mois: r.mois,
+          prixAchatMoyen: r.prix_achat_moy ? Number(r.prix_achat_moy) : null,
+          prixVenteMoyen: r.prix_vente_moy ? Number(r.prix_vente_moy) : null,
+          nbAchats: Number(r.nb_achats),
+          nbVentes: Number(r.nb_ventes),
+        })));
+      }
       setLoading(false);
     }
     loadPrices();
