@@ -32,8 +32,8 @@ function AuthScreen({ onAuth }: { onAuth: (centreId: string, centreName: string)
     // Find or register the centre in breakers
     const { data: existing } = await supabase
       .from("breakers")
-      .select("id, nom_centre")
-      .eq("nom_centre", nom.trim())
+      .select("id, name")
+      .eq("name", nom.trim())
       .maybeSingle();
 
     let centreId: string;
@@ -42,7 +42,7 @@ function AuthScreen({ onAuth }: { onAuth: (centreId: string, centreName: string)
     } else {
       const { data: inserted, error: insertErr } = await supabase
         .from("breakers")
-        .insert({ nom_centre: nom.trim() })
+        .insert({ name: nom.trim() })
         .select("id")
         .single();
       if (insertErr || !inserted) {

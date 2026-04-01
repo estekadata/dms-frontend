@@ -300,9 +300,6 @@ export default function PiecesPage() {
                           {qty}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums">{p.prix_achat ? `${p.prix_achat.toLocaleString("fr-FR")} EUR` : "—"}</td>
-                      <td className="px-4 py-3 text-right tabular-nums">{p.prix_vente ? `${p.prix_vente.toLocaleString("fr-FR")} EUR` : "—"}</td>
-                      <td className="px-4 py-3 text-gray-600 text-xs">{p.emplacement || "—"}</td>
                       <td className="px-4 py-3 text-center">
                         <button
                           onClick={() => loadMovements(p)}
