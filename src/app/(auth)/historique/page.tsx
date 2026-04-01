@@ -24,9 +24,9 @@ type ReceptionRow = {
 /* ---- Expeditions ---- */
 type ExpeditionRow = {
   n_expedition: number;
-  date_validation: string | null;
+  date_chargement: string | null;
   n_client: number | null;
-  tbl_clients: { nom_client: string } | null;
+  tbl_clients: { societe: string } | null;
   montant_ht: number | null;
 };
 
@@ -97,7 +97,7 @@ export default function HistoriquePage() {
         } else if (tab === "Expeditions") {
           const { data, error: err } = await supabase
             .from("tbl_expeditions")
-            .select("n_expedition, date_validation, n_client, tbl_clients(nom_client), montant_ht")
+            .select("n_expedition, date_chargement, n_client, tbl_clients(societe), montant_ht")
             .order("n_expedition", { ascending: false })
             .limit(500);
           if (err) throw err;
@@ -205,7 +205,7 @@ export default function HistoriquePage() {
   const expChartData = useMemo(() => {
     const byMonth: Record<string, { expeditions: number; moteurs: number }> = {};
     expeditions.forEach((e) => {
-      const k = e.date_validation?.substring(0, 7) || "Inconnu";
+      const k = e.date_chargement?.substring(0, 7) || "Inconnu";
       if (!byMonth[k]) byMonth[k] = { expeditions: 0, moteurs: 0 };
       byMonth[k].expeditions++;
     });
@@ -403,8 +403,8 @@ export default function HistoriquePage() {
                         className={`hover:bg-gray-50 cursor-pointer ${selectedExp === e.n_expedition ? "bg-red-50" : ""}`}
                       >
                         <td className="px-4 py-3 font-mono text-xs">{e.n_expedition}</td>
-                        <td className="px-4 py-3">{e.date_validation ? new Date(e.date_validation).toLocaleDateString("fr-FR") : "—"}</td>
-                        <td className="px-4 py-3 font-medium">{e.tbl_clients?.nom_client || "—"}</td>
+                        <td className="px-4 py-3">{e.date_chargement ? new Date(e.date_chargement).toLocaleDateString("fr-FR") : "—"}</td>
+                        <td className="px-4 py-3 font-medium">{e.tbl_clients?.societe || "—"}</td>
                         <td className="px-4 py-3 text-right tabular-nums">{e.montant_ht ? `${Math.round(e.montant_ht).toLocaleString("fr-FR")} EUR` : "—"}</td>
                       </tr>
                     ))}
