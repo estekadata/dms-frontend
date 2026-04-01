@@ -301,22 +301,8 @@ function TendancesTab() {
       const cutoff = new Date();
       cutoff.setMonth(cutoff.getMonth() - windowSize * 2);
 
-      const [{ data: recData }, { data: expData }] = await Promise.all([
-        supabase
-          .from("v_moteurs_dispo")
-          .select("nom_type_moteur, prix_achat_moteur, date_entree_stock")
-          .gte("date_entree_stock", cutoff.toISOString())
-          .not("prix_achat_moteur", "is", null)
-          .not("nom_type_moteur", "is", null)
-          .limit(5000),
-        supabase
-          .from("tbl_expeditions_moteurs")
-          .select("code_moteur, prix_vente_moteur, date_validation")
-          .gte("date_validation", cutoff.toISOString())
-          .not("prix_vente_moteur", "is", null)
-          .not("nom_type_moteur", "is", null)
-          .limit(5000),
-      ]);
+      // Use RPC to get all data server-side (no 1000 row limit)
+      const { data: allData } = await supabase.rpc("get_tendances_prix", { p_window_months: windowSize });
 
       const now = new Date();
       const recentCutoff = new Date();
@@ -324,24 +310,20 @@ function TendancesTab() {
 
       // Group by nom_type_moteur for purchases
       const achatByCode: Record<string, { recent: number[]; old: number[] }> = {};
-      (recData || []).forEach((r: any) => {
+      const venteByCode: Record<string, { recent: number[]; old: number[] }> = {};
+      (allData || []).forEach((r: any) => {
         const code = (r.nom_type_moteur || "").toUpperCase();
         if (!code) return;
-        if (!achatByCode[code]) achatByCode[code] = { recent: [], old: [] };
-        const d = new Date(r.date_entree_stock);
-        if (d >= recentCutoff) achatByCode[code].recent.push(r.prix_achat_moteur);
-        else achatByCode[code].old.push(r.prix_achat_moteur);
-      });
-
-      // Group by code_moteur for sales (from expeditions table)
-      const venteByCode: Record<string, { recent: number[]; old: number[] }> = {};
-      (expData || []).forEach((e: any) => {
-        const code = (e.nom_type_moteur || "").toUpperCase();
-        if (!code) return;
-        if (!venteByCode[code]) venteByCode[code] = { recent: [], old: [] };
-        const d = new Date(e.date_validation);
-        if (d >= recentCutoff) venteByCode[code].recent.push(e.prix_vente_moteur);
-        else venteByCode[code].old.push(e.prix_vente_moteur);
+        const d = new Date(r.date_op);
+        if (r.source === "achat") {
+          if (!achatByCode[code]) achatByCode[code] = { recent: [], old: [] };
+          if (d >= recentCutoff) achatByCode[code].recent.push(r.prix);
+          else achatByCode[code].old.push(r.prix);
+        } else {
+          if (!venteByCode[code]) venteByCode[code] = { recent: [], old: [] };
+          if (d >= recentCutoff) venteByCode[code].recent.push(r.prix);
+          else venteByCode[code].old.push(r.prix);
+        }
       });
 
       const avg = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
