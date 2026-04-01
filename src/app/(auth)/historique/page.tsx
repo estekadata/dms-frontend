@@ -507,7 +507,7 @@ export default function HistoriquePage() {
                       {expDetailMoteurs.map((m) => (
                         <tr key={m.n_moteur} className="hover:bg-gray-50">
                           <td className="px-3 py-2 font-mono">{m.n_moteur}</td>
-                          <td className="px-3 py-2 font-semibold">{m.tbl_moteurs?.tbl_types_moteurs?.nom_type_moteur || m.tbl_moteurs?.code_moteur || "—"}</td>
+                          <td className="px-3 py-2 font-semibold">{m.tbl_moteurs?.tbl_types_moteurs?.[0]?.nom_type_moteur || m.tbl_moteurs?.code_moteur || "—"}</td>
                           <td className="px-3 py-2 text-gray-500">{m.tbl_moteurs?.num_serie || "—"}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{m.prix_vente_moteur ? `${Math.round(m.prix_vente_moteur).toLocaleString("fr-FR")} EUR` : "—"}</td>
                         </tr>
