@@ -237,7 +237,7 @@ export default function PiecesPage() {
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <Input
-          placeholder="Rechercher (reference, designation, marque...)"
+          placeholder="Rechercher (reference, modele, marque...)"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
@@ -293,7 +293,7 @@ export default function PiecesPage() {
                   return (
                     <tr key={p.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 font-mono text-xs">{p.reference || "—"}</td>
-                      <td className="px-4 py-3 font-medium">{p.designation || "—"}</td>
+                      <td className="px-4 py-3 font-medium">{p.modele || "—"}</td>
                       <td className="px-4 py-3 text-gray-600">{p.marque || "—"}</td>
                       <td className="px-4 py-3 text-center">
                         <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold tabular-nums ${stockColor(qty)}`}>
@@ -457,7 +457,7 @@ export default function PiecesPage() {
                     {inactiveParts.map((p: any) => (
                       <tr key={p.id} className="hover:bg-gray-50">
                         <td className="px-4 py-2 font-mono text-xs">{p.reference || "—"}</td>
-                        <td className="px-4 py-2">{p.designation || "—"}</td>
+                        <td className="px-4 py-2">{p.modele || "—"}</td>
                         <td className="px-4 py-2 text-center">
                           <span className="text-amber-600 font-semibold">{p.stock}</span>
                         </td>
