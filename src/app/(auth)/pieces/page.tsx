@@ -279,11 +279,10 @@ export default function PiecesPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
                 <tr>
-                  <th className="px-4 py-3 text-left">Reference</th>
-                  <th className="px-4 py-3 text-left">Modele</th>
-                  <th className="px-4 py-3 text-left">Marque</th>
                   <th className="px-4 py-3 text-left">Categorie</th>
+                  <th className="px-4 py-3 text-left">Marque</th>
                   <th className="px-4 py-3 text-center">Stock</th>
+                  <th className="px-4 py-3 text-left">Reference</th>
                   <th className="px-4 py-3 text-center">Historique</th>
                 </tr>
               </thead>
@@ -292,14 +291,14 @@ export default function PiecesPage() {
                   const qty = p.stock ?? 0;
                   return (
                     <tr key={p.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-mono text-xs">{p.reference || "—"}</td>
-                      <td className="px-4 py-3 font-medium">{p.modele || "—"}</td>
+                      <td className="px-4 py-3 font-medium">{p.categorie || "—"}</td>
                       <td className="px-4 py-3 text-gray-600">{p.marque || "—"}</td>
                       <td className="px-4 py-3 text-center">
                         <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold tabular-nums ${stockColor(qty)}`}>
                           {qty}
                         </span>
                       </td>
+                      <td className="px-4 py-3 font-mono text-xs">{p.reference || "—"}</td>
                       <td className="px-4 py-3 text-center">
                         <button
                           onClick={() => loadMovements(p)}
