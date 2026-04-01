@@ -17,7 +17,7 @@ type Reception = {
 type MoteurDetail = {
   n_moteur: number;
   code_moteur: string | null;
-  tbl_types_moteurs?: { nom_type_moteur: string }[] | null;
+  nom_type_moteur?: string | null;
   num_serie: string | null;
   modele_saisi: string | null;
   prix_achat_moteur: number | null;
@@ -98,8 +98,8 @@ export default function ReceptionsPage() {
     try {
       const [motRes, boiRes] = await Promise.all([
         supabase
-          .from("tbl_moteurs")
-          .select("n_moteur, code_moteur, num_serie, modele_saisi, prix_achat_moteur, etat_moteur, resa_client_moteur, tbl_types_moteurs(nom_type_moteur)")
+          .from("v_moteurs_dispo")
+          .select("n_moteur, code_moteur, num_serie, modele_saisi, prix_achat_moteur, etat_moteur, resa_client_moteur, nom_type_moteur")
           .eq("num_reception", rec.n_reception),
         supabase
           .from("tbl_boites")
@@ -273,7 +273,7 @@ export default function ReceptionsPage() {
                           {detailMoteurs.map((m) => (
                             <tr key={m.n_moteur} className="hover:bg-gray-50">
                               <td className="px-3 py-2 font-mono">{m.n_moteur}</td>
-                              <td className="px-3 py-2 font-semibold">{m.tbl_types_moteurs?.[0]?.nom_type_moteur || m.code_moteur || "—"}</td>
+                              <td className="px-3 py-2 font-semibold">{m.nom_type_moteur || m.code_moteur || "—"}</td>
                               <td className="px-3 py-2 text-gray-500">{m.num_serie || "—"}</td>
                               <td className="px-3 py-2">{m.modele_saisi || "—"}</td>
                               <td className="px-3 py-2 text-right tabular-nums">
