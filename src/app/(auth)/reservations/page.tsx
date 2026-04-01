@@ -14,7 +14,7 @@ import { toast } from "sonner";
 type MoteurRow = {
   n_moteur: number;
   code_moteur: string | null;
-  tbl_types_moteurs?: { nom_type_moteur: string }[] | null;
+  nom_type_moteur?: string | null;
   num_serie: string | null;
   modele_saisi: string | null;
   prix_achat_moteur: number | null;
@@ -34,7 +34,7 @@ type BoiteRow = {
 type AvailMoteur = {
   n_moteur: number;
   code_moteur: string | null;
-  tbl_types_moteurs?: { nom_type_moteur: string }[] | null;
+  nom_type_moteur?: string | null;
   modele_saisi: string | null;
   marque: string | null;
 };
@@ -65,15 +65,15 @@ function MoteursTab() {
     try {
       const [resaRes, dispoRes] = await Promise.all([
         supabase
-          .from("tbl_moteurs")
-          .select("n_moteur, code_moteur, num_serie, modele_saisi, prix_achat_moteur, resa_client_moteur, date_resa_moteur, tbl_types_moteurs(nom_type_moteur)")
+          .from("v_moteurs_dispo")
+          .select("n_moteur, code_moteur, num_serie, modele_saisi, prix_achat_moteur, resa_client_moteur, date_resa_moteur, nom_type_moteur")
           .not("resa_client_moteur", "is", null)
           .neq("resa_client_moteur", "")
           .is("n_expedition", null)
           .order("date_resa_moteur", { ascending: false }),
         supabase
-          .from("tbl_moteurs")
-          .select("n_moteur, code_moteur, modele_saisi, marque, tbl_types_moteurs(nom_type_moteur)")
+          .from("v_moteurs_dispo")
+          .select("n_moteur, code_moteur, modele_saisi, marque, nom_type_moteur")
           .is("resa_client_moteur", null)
           .is("n_expedition", null)
           .order("n_moteur", { ascending: false })
@@ -95,7 +95,7 @@ function MoteursTab() {
   }, [load]);
 
   const filteredAvail = available.filter(
-    (m) => !searchNew || [m.tbl_types_moteurs?.[0]?.nom_type_moteur, m.code_moteur, m.modele_saisi, m.marque].some((v) => (v || "").toLowerCase().includes(searchNew.toLowerCase()))
+    (m) => !searchNew || [m.nom_type_moteur, m.code_moteur, m.modele_saisi, m.marque].some((v) => (v || "").toLowerCase().includes(searchNew.toLowerCase()))
   );
 
   async function handleReserver() {
@@ -166,7 +166,7 @@ function MoteursTab() {
               <option value="">— Sélectionner —</option>
               {filteredAvail.map((m) => (
                 <option key={m.n_moteur} value={m.n_moteur}>
-                  {m.n_moteur} — {m.tbl_types_moteurs?.[0]?.nom_type_moteur || m.code_moteur || m.modele_saisi || "Sans code"} {m.marque ? `(${m.marque})` : ""}
+                  {m.n_moteur} — {m.nom_type_moteur || m.code_moteur || m.modele_saisi || "Sans code"} {m.marque ? `(${m.marque})` : ""}
                 </option>
               ))}
             </select>
@@ -210,7 +210,7 @@ function MoteursTab() {
                 {reserved.map((m) => (
                   <tr key={m.n_moteur} className="hover:bg-gray-50">
                     <td className="px-4 py-3 font-mono text-xs text-gray-400">{m.n_moteur}</td>
-                    <td className="px-4 py-3 font-semibold">{m.tbl_types_moteurs?.[0]?.nom_type_moteur || m.code_moteur || "—"}</td>
+                    <td className="px-4 py-3 font-semibold">{m.nom_type_moteur || m.code_moteur || "—"}</td>
                     <td className="px-4 py-3 text-gray-600">{m.num_serie || "—"}</td>
                     <td className="px-4 py-3 text-gray-600">{m.modele_saisi || "—"}</td>
                     <td className="px-4 py-3 tabular-nums text-right">
