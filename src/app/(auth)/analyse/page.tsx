@@ -467,12 +467,12 @@ function OffresTab() {
       const [{ data: clicks }, { data: frees }] = await Promise.all([
         supabase
           .from("breaker_click_offers")
-          .select("*, breakers(nom_centre)")
+          .select("*, breakers(name)")
           .order("created_at", { ascending: false })
           .limit(30),
         supabase
           .from("breaker_free_offers")
-          .select("*, breakers(nom_centre)")
+          .select("*, breakers(name)")
           .order("created_at", { ascending: false })
           .limit(30),
       ]);
@@ -498,10 +498,10 @@ function OffresTab() {
               <div key={i} className="border rounded-lg p-3">
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-mono font-semibold text-sm">{o.code_moteur || "—"}</span>
-                  <span className="text-sm font-bold text-[#C41E3A]">{o.prix ? `${o.prix} EUR` : "—"}</span>
+                  <span className="text-sm font-bold text-[#C41E3A]">{o.prix_demande ? `${o.prix_demande} EUR` : "—"}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>{o.breakers?.nom_centre || "Centre inconnu"}</span>
+                  <span>{o.breakers?.name || "Centre inconnu"}</span>
                   <span>{o.created_at ? new Date(o.created_at).toLocaleDateString("fr-FR") : ""}</span>
                 </div>
                 {o.note && <p className="text-xs text-gray-400 mt-1">{o.note}</p>}
@@ -521,11 +521,11 @@ function OffresTab() {
             {freeOffers.map((o, i) => (
               <div key={i} className="border rounded-lg p-3">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="font-mono font-semibold text-sm">{o.code_moteur || o.description || "—"}</span>
-                  <span className="text-sm font-bold text-[#C41E3A]">{o.prix ? `${o.prix} EUR` : "—"}</span>
+                  <span className="font-mono font-semibold text-sm">{o.code_moteur || o.texte || "—"}</span>
+                  <span className="text-sm font-bold text-[#C41E3A]">{o.prix_demande ? `${o.prix_demande} EUR` : "—"}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>{o.breakers?.nom_centre || "Centre inconnu"}</span>
+                  <span>{o.breakers?.name || "Centre inconnu"}</span>
                   <span>{o.created_at ? new Date(o.created_at).toLocaleDateString("fr-FR") : ""}</span>
                 </div>
                 {o.note && <p className="text-xs text-gray-400 mt-1">{o.note}</p>}
