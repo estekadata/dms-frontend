@@ -121,52 +121,28 @@ export default function PrixPage() {
     });
   }
 
-  // Load moteurs data from Supabase if no file
+  // Load moteurs data from Supabase using get_besoins_moteurs RPC
   async function loadMoteursFromDB() {
     setStatus("parsing");
-    const { data } = await supabase
-      .from("v_moteurs_dispo")
-      .select("code_moteur, prix_achat_moteur, est_disponible, marque")
-      .limit(5000);
+    const { data, error } = await supabase.rpc("get_besoins_moteurs", { p_limit: 2000 });
 
-    // Aggregate by code_moteur
-    const codeMap: Record<string, { achats: number[]; stock: number; vendus: number }> = {};
-    (data || []).forEach((d: any) => {
-      const code = (d.code_moteur || "").toUpperCase().trim();
-      if (!code) return;
-      if (!codeMap[code]) codeMap[code] = { achats: [], stock: 0, vendus: 0 };
-      if (d.prix_achat_moteur) codeMap[code].achats.push(d.prix_achat_moteur);
-      if (d.est_disponible === 1) codeMap[code].stock++;
-    });
+    if (error) {
+      setErrorMsg("Erreur chargement BDD: " + error.message);
+      setStatus("error");
+      return;
+    }
 
-    // Get sales
-    const { data: sales } = await supabase
-      .from("tbl_expeditions_moteurs")
-      .select("code_moteur, prix_vente_moteur")
-      .not("code_moteur", "is", null)
-      .limit(5000);
-
-    const salesMap: Record<string, number[]> = {};
-    (sales || []).forEach((s: any) => {
-      const code = (s.code_moteur || "").toUpperCase().trim();
-      if (!code) return;
-      if (!salesMap[code]) salesMap[code] = [];
-      if (s.prix_vente_moteur) salesMap[code].push(s.prix_vente_moteur);
-    });
-
-    const parsed: MoteurMapping[] = Object.entries(codeMap).map(([code, v]) => {
-      const avgAchat = v.achats.length ? v.achats.reduce((a, b) => a + b, 0) / v.achats.length : 0;
-      const salesPrices = salesMap[code] || [];
-      const avgVente = salesPrices.length ? salesPrices.reduce((a, b) => a + b, 0) / salesPrices.length : 0;
-      return {
-        code_moteur: code,
-        prix_achat_moteur: Math.round(avgAchat),
-        prix_vente_moteur: Math.round(avgVente),
-        nb_en_stock: v.stock,
-        nb_vendus: salesPrices.length,
-        urgence: 0,
-      };
-    });
+    const parsed: MoteurMapping[] = (data || []).map((r: any) => ({
+      code_moteur: r.code_moteur || "",
+      prix_achat_moteur: Math.round(r.prix_moy_achat_3m || 0),
+      prix_vente_moteur: 0,
+      nb_en_stock: r.nb_stock_dispo || 0,
+      nb_vendus: r.nb_vendus_3m || 0,
+      urgence: r.nb_stock_dispo === 0 && r.nb_vendus_3m > 0 ? 10
+        : r.nb_stock_dispo < r.nb_vendus_3m ? 7
+        : r.nb_stock_dispo > r.nb_vendus_3m * 2 ? 2
+        : 5,
+    }));
 
     setMoteursData(parsed);
     setStatus("idle");
