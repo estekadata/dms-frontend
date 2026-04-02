@@ -135,7 +135,7 @@ export default function PrixPage() {
   // Load moteurs data from Supabase using get_moteurs_prix_data RPC
   async function loadMoteursFromDB() {
     setStatus("parsing");
-    const { data, error } = await supabase.rpc("get_moteurs_prix_data", { p_limit: 2000 });
+    const { data, error } = await supabase.rpc("get_moteurs_prix_data", { p_limit: 5000 }).limit(5000);
 
     if (error) {
       setErrorMsg("Erreur chargement BDD: " + error.message);
