@@ -461,74 +461,141 @@ function OffresTab() {
   const [freeOffers, setFreeOffers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      const [{ data: clicks }, { data: frees }] = await Promise.all([
-        supabase
-          .from("breaker_click_offers")
-          .select("*, breakers(name)")
-          .order("created_at", { ascending: false })
-          .limit(30),
-        supabase
-          .from("breaker_free_offers")
-          .select("*, breakers(name)")
-          .order("created_at", { ascending: false })
-          .limit(30),
-      ]);
-      setClickOffers(clicks || []);
-      setFreeOffers(frees || []);
-      setLoading(false);
-    }
-    load();
-  }, []);
+  async function loadOffers() {
+    setLoading(true);
+    const [{ data: clicks }, { data: frees }] = await Promise.all([
+      supabase
+        .from("breaker_click_offers")
+        .select("*, breakers(name)")
+        .order("created_at", { ascending: false })
+        .limit(30),
+      supabase
+        .from("breaker_free_offers")
+        .select("*, breakers(name)")
+        .order("created_at", { ascending: false })
+        .limit(30),
+    ]);
+    setClickOffers(clicks || []);
+    setFreeOffers(frees || []);
+    setLoading(false);
+  }
+
+  useEffect(() => { loadOffers(); }, []);
+
+  async function handleDeleteClick(id: number) {
+    if (!confirm("Supprimer cette offre ?")) return;
+    await supabase.from("breaker_click_offers").delete().eq("id", id);
+    setClickOffers((prev) => prev.filter((o) => o.id !== id));
+  }
+
+  async function handleValidateClick(offer: any) {
+    if (!confirm("Valider et ajouter au stock ?")) return;
+    const { error } = await supabase.from("tbl_moteurs").insert({
+      code_moteur: offer.code_moteur,
+      prix_achat_moteur: offer.prix_demande,
+      observations: "Achat VHU " + (offer.breakers?.name || "") + " " + (offer.note || ""),
+    });
+    if (error) { alert("Erreur: " + error.message); return; }
+    await supabase.from("breaker_click_offers").delete().eq("id", offer.id);
+    setClickOffers((prev) => prev.filter((o) => o.id !== offer.id));
+    alert("Moteur ajoute au stock !");
+  }
+
+  async function handleDeleteFree(id: number) {
+    if (!confirm("Supprimer cette offre ?")) return;
+    await supabase.from("breaker_free_offers").delete().eq("id", id);
+    setFreeOffers((prev) => prev.filter((o) => o.id !== id));
+  }
+
+  async function handleValidateFree(offer: any) {
+    if (!confirm("Valider et ajouter au stock ?")) return;
+    const { error } = await supabase.from("tbl_moteurs").insert({
+      code_moteur: offer.code_moteur || offer.texte || "",
+      prix_achat_moteur: offer.prix_demande,
+      observations: "Achat VHU " + (offer.breakers?.name || "") + " " + (offer.note || ""),
+    });
+    if (error) { alert("Erreur: " + error.message); return; }
+    await supabase.from("breaker_free_offers").delete().eq("id", offer.id);
+    setFreeOffers((prev) => prev.filter((o) => o.id !== offer.id));
+    alert("Moteur ajoute au stock !");
+  }
+
+  async function handleClearAllClicks() {
+    if (!confirm("Supprimer toutes les offres click ?")) return;
+    const ids = clickOffers.map((o) => o.id);
+    await supabase.from("breaker_click_offers").delete().in("id", ids);
+    setClickOffers([]);
+  }
+
+  async function handleClearAllFrees() {
+    if (!confirm("Supprimer toutes les offres libres ?")) return;
+    const ids = freeOffers.map((o) => o.id);
+    await supabase.from("breaker_free_offers").delete().in("id", ids);
+    setFreeOffers([]);
+  }
 
   if (loading) return <div className="text-center py-16 text-gray-400">Chargement...</div>;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Click offers */}
       <div className="bg-white rounded-2xl p-6 shadow-sm">
-        <h3 className="font-semibold text-gray-700 mb-4">Offres click recentes ({clickOffers.length})</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-700">Offres click ({clickOffers.length})</h3>
+          {clickOffers.length > 0 && (
+            <button onClick={handleClearAllClicks} className="text-xs text-red-500 hover:text-red-700 font-medium">Tout effacer</button>
+          )}
+        </div>
         {clickOffers.length === 0 ? (
           <p className="text-sm text-gray-400">Aucune offre click</p>
         ) : (
           <div className="space-y-3 max-h-[600px] overflow-y-auto">
-            {clickOffers.map((o, i) => (
-              <div key={i} className="border rounded-lg p-3">
+            {clickOffers.map((o) => (
+              <div key={o.id} className="border rounded-lg p-3">
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-mono font-semibold text-sm">{o.code_moteur || "—"}</span>
-                  <span className="text-sm font-bold text-[#C41E3A]">{o.prix_demande ? `${o.prix_demande} EUR` : "—"}</span>
+                  <span className="text-sm font-bold text-[#C41E3A]">{o.prix_demande ? o.prix_demande + " EUR" : "—"}</span>
                 </div>
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>{o.breakers?.name || "Centre inconnu"}</span>
+                <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                  <span>{o.breakers?.name || "Centre inconnu"} {o.qty > 1 ? "x" + o.qty : ""}</span>
                   <span>{o.created_at ? new Date(o.created_at).toLocaleDateString("fr-FR") : ""}</span>
                 </div>
-                {o.note && <p className="text-xs text-gray-400 mt-1">{o.note}</p>}
+                {o.note && <p className="text-xs text-gray-400 mb-2">{o.note}</p>}
+                <div className="flex gap-2">
+                  <button onClick={() => handleValidateClick(o)} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium py-1.5 px-3 rounded-lg">Valider (stock)</button>
+                  <button onClick={() => handleDeleteClick(o.id)} className="flex-1 bg-gray-100 hover:bg-red-50 text-gray-500 hover:text-red-600 text-xs font-medium py-1.5 px-3 rounded-lg">Effacer</button>
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* Free offers */}
       <div className="bg-white rounded-2xl p-6 shadow-sm">
-        <h3 className="font-semibold text-gray-700 mb-4">Offres libres recentes ({freeOffers.length})</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-700">Offres libres ({freeOffers.length})</h3>
+          {freeOffers.length > 0 && (
+            <button onClick={handleClearAllFrees} className="text-xs text-red-500 hover:text-red-700 font-medium">Tout effacer</button>
+          )}
+        </div>
         {freeOffers.length === 0 ? (
           <p className="text-sm text-gray-400">Aucune offre libre</p>
         ) : (
           <div className="space-y-3 max-h-[600px] overflow-y-auto">
-            {freeOffers.map((o, i) => (
-              <div key={i} className="border rounded-lg p-3">
+            {freeOffers.map((o) => (
+              <div key={o.id} className="border rounded-lg p-3">
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-mono font-semibold text-sm">{o.code_moteur || o.texte || "—"}</span>
-                  <span className="text-sm font-bold text-[#C41E3A]">{o.prix_demande ? `${o.prix_demande} EUR` : "—"}</span>
+                  <span className="text-sm font-bold text-[#C41E3A]">{o.prix_demande ? o.prix_demande + " EUR" : "—"}</span>
                 </div>
-                <div className="flex items-center justify-between text-xs text-gray-500">
+                <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
                   <span>{o.breakers?.name || "Centre inconnu"}</span>
                   <span>{o.created_at ? new Date(o.created_at).toLocaleDateString("fr-FR") : ""}</span>
                 </div>
-                {o.note && <p className="text-xs text-gray-400 mt-1">{o.note}</p>}
+                {o.note && <p className="text-xs text-gray-400 mb-2">{o.note}</p>}
+                <div className="flex gap-2">
+                  <button onClick={() => handleValidateFree(o)} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium py-1.5 px-3 rounded-lg">Valider (stock)</button>
+                  <button onClick={() => handleDeleteFree(o.id)} className="flex-1 bg-gray-100 hover:bg-red-50 text-gray-500 hover:text-red-600 text-xs font-medium py-1.5 px-3 rounded-lg">Effacer</button>
+                </div>
               </div>
             ))}
           </div>
