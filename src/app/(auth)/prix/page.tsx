@@ -507,8 +507,8 @@ export default function PrixPage() {
                 {filteredResults.map((r) => (
                   <tr key={r.code_moteur} className="hover:bg-gray-50">
                     <td className="px-2 py-2 font-mono font-semibold text-xs">{r.code_moteur}</td>
-                    <td className="px-2 py-2 text-gray-600 text-xs">{r.marque || "\u2014"}</td>
-                    <td className="px-2 py-2 text-right tabular-nums text-gray-500">{r.prix_achat_actuel ? `${r.prix_achat_actuel} \u20AC` : "\u2014"}</td>
+                    <td className="px-2 py-2 text-gray-600 text-xs">{r.marque || "—"}</td>
+                    <td className="px-2 py-2 text-right tabular-nums text-gray-500">{r.prix_achat_actuel ? `${r.prix_achat_actuel} €` : "—"}</td>
                     <td className="px-2 py-2 text-center tabular-nums">{r.nb_en_stock}</td>
                     <td className="px-2 py-2 text-center tabular-nums">{r.vendus_3m}</td>
                     <td className="px-2 py-2 text-center tabular-nums">{r.vendus_6m}</td>
@@ -531,7 +531,7 @@ export default function PrixPage() {
                           onKeyDown={(e) => { if (e.key === "Enter") handlePriceEdit(r.code_moteur, "prix_achat_propose", parseInt((e.target as HTMLInputElement).value) || 0); if (e.key === "Escape") setEditingCell(null); }} />
                       ) : (
                         <span className="font-bold text-[#C41E3A] cursor-pointer hover:underline" onClick={() => setEditingCell({ code: r.code_moteur, field: "prix_achat_propose" })}>
-                          {r.prix_achat_propose} \u20AC
+                          {r.prix_achat_propose} €
                         </span>
                       )}
                     </td>
@@ -542,7 +542,7 @@ export default function PrixPage() {
                           onKeyDown={(e) => { if (e.key === "Enter") handlePriceEdit(r.code_moteur, "prix_vente_propose", parseInt((e.target as HTMLInputElement).value) || 0); if (e.key === "Escape") setEditingCell(null); }} />
                       ) : (
                         <span className="font-bold text-blue-700 cursor-pointer hover:underline" onClick={() => setEditingCell({ code: r.code_moteur, field: "prix_vente_propose" })}>
-                          {r.prix_vente_propose} \u20AC
+                          {r.prix_vente_propose} €
                         </span>
                       )}
                     </td>
