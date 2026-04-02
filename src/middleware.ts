@@ -7,7 +7,7 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Public routes
-  if (pathname === "/" || pathname.startsWith("/api/auth") || pathname.startsWith("/_next")) {
+  if (pathname === "/" || pathname.startsWith("/api/auth") || pathname.startsWith("/_next") || pathname.startsWith("/vhu")) {
     return NextResponse.next();
   }
 
