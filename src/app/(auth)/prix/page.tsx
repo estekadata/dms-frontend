@@ -168,10 +168,10 @@ export default function PrixPage() {
     setStatus("idle");
   }
 
-  // Compute pricing recommendations (matching Python logic)
+  // Compute pricing recommendations
   function computePricing() {
-    if (catalogData.length === 0) {
-      setErrorMsg("Veuillez charger le fichier catalogue");
+    if (catalogData.length === 0 && moteursData.length === 0) {
+      setErrorMsg("Chargez le catalogue ou les donnees moteurs depuis la BDD");
       setStatus("error");
       return;
     }
@@ -179,45 +179,49 @@ export default function PrixPage() {
     setStatus("computing");
     setErrorMsg("");
 
-    // Build moteur index
+    const catalogIndex: Record<string, CatalogRow> = {};
+    catalogData.forEach((c) => { catalogIndex[c.code_moteur] = c; });
+
     const moteurIndex: Record<string, MoteurMapping> = {};
     moteursData.forEach((m) => { moteurIndex[m.code_moteur] = m; });
 
+    const allCodes = new Set([...catalogData.map(c => c.code_moteur), ...moteursData.map(m => m.code_moteur)]);
     const output: PricingResult[] = [];
 
-    for (const cat of catalogData) {
-      const moteur = moteurIndex[cat.code_moteur];
+    for (const code of allCodes) {
+      const cat = catalogIndex[code];
+      const moteur = moteurIndex[code];
 
+      const prixCatalogue = cat?.prix_catalogue || 0;
       const prixAchatActuel = moteur?.prix_achat_moteur || 0;
       const prixVenteActuel = moteur?.prix_vente_moteur || 0;
       const nbStock = moteur?.nb_en_stock || 0;
       const nbVendus = moteur?.nb_vendus || 0;
       const urgence = moteur?.urgence || 0;
 
-      // Score: base from urgence, stock, demand
       let score = 50;
-      // Urgency bonus
       score += urgence * (bonusUrgence / 10);
-      // Overstock penalty
       if (nbStock > 3) score -= (nbStock - 3) * (malusSurstock / 10);
-      // Demand bonus
       if (nbVendus > 5) score += Math.min(nbVendus - 5, 20);
       score = Math.max(10, Math.min(100, score));
 
-      // Prix achat propose: based on catalogue price adjusted by score
       const scoreRatio = score / 100;
-      const maxAchat = cat.prix_catalogue * (1 - margeCible / 100);
-      const prixAchatPropose = Math.round(maxAchat * (0.7 + 0.3 * scoreRatio));
+      let prixAchatPropose: number;
+      let prixVentePropose: number;
 
-      // Prix vente propose: catalogue price adjusted
-      const prixVentePropose = Math.round(
-        prixAchatPropose * (1 + margeCible / 100) * (1 + scoreRatio * 0.1)
-      );
+      if (prixCatalogue > 0) {
+        const maxAchat = prixCatalogue * (1 - margeCible / 100);
+        prixAchatPropose = Math.round(maxAchat * (0.7 + 0.3 * scoreRatio));
+        prixVentePropose = Math.round(prixAchatPropose * (1 + margeCible / 100) * (1 + scoreRatio * 0.1));
+      } else {
+        const base = prixAchatActuel || 0;
+        prixAchatPropose = Math.round(base * (0.85 + 0.3 * scoreRatio));
+        prixVentePropose = Math.round(prixAchatPropose * (1 + margeCible / 100));
+      }
 
       const margePct = prixAchatPropose > 0
         ? Math.round(((prixVentePropose - prixAchatPropose) / prixAchatPropose) * 100)
         : 0;
-
       const deltaAchatPct = prixAchatActuel > 0
         ? Math.round(((prixAchatPropose - prixAchatActuel) / prixAchatActuel) * 100)
         : 0;
@@ -225,10 +229,12 @@ export default function PrixPage() {
         ? Math.round(((prixVentePropose - prixVenteActuel) / prixVenteActuel) * 100)
         : 0;
 
+      if (prixAchatPropose === 0 && prixVentePropose === 0) continue;
+
       output.push({
-        code_moteur: cat.code_moteur,
-        marque: cat.marque,
-        prix_catalogue: cat.prix_catalogue,
+        code_moteur: code,
+        marque: cat?.marque,
+        prix_catalogue: prixCatalogue,
         prix_achat_actuel: prixAchatActuel,
         prix_vente_actuel: prixVenteActuel,
         nb_en_stock: nbStock,
@@ -246,6 +252,23 @@ export default function PrixPage() {
     output.sort((a, b) => b.score - a.score);
     setResults(output);
     setStatus("done");
+
+    // Save to besoins_overrides so VHU sees updated prices
+    saveOverrides(output);
+  }
+
+  async function saveOverrides(data: PricingResult[]) {
+    for (const r of data) {
+      if (r.prix_achat_propose <= 0) continue;
+      await supabase.from("besoins_overrides").upsert({
+        code_moteur: r.code_moteur,
+        prix_override: r.prix_achat_propose,
+        urgence_override: r.urgence > 0 ? r.urgence : null,
+        statut: "actif",
+        modifie_par: "prix_page",
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "code_moteur" });
+    }
   }
 
   // CSV download
@@ -357,7 +380,7 @@ export default function PrixPage() {
           <div className="flex gap-3 mt-6">
             <Button
               onClick={computePricing}
-              disabled={status === "computing" || catalogData.length === 0}
+              disabled={status === "computing" || (catalogData.length === 0 && moteursData.length === 0)}
               className="bg-[#C41E3A] hover:bg-[#8B1A2B] text-white"
             >
               {status === "computing" ? "Calcul en cours..." : "Calculer les recommandations"}
