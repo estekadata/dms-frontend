@@ -84,7 +84,7 @@ function AuthScreen({ onAuth }: { onAuth: (centreId: string, centreName: string)
 }
 
 /* ────────── TYPES ────────── */
-type SortKey = "code_moteur" | "marque" | "urgence" | "prix_moyen" | "stock_dispo" | "quantite";
+type SortKey = "code_moteur" | "marque" | "urgence" | "prix_moyen";
 type SortDir = "asc" | "desc";
 
 /* ────────── MAIN PORTAL ────────── */
@@ -361,12 +361,6 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
                       <th className={`${thClass} text-center`} onClick={() => toggleSort("urgence")}>
                         Urgence{sortIcon("urgence")}
                       </th>
-                      <th className={`${thClass} text-center`} onClick={() => toggleSort("quantite")}>
-                        Vendus{sortIcon("quantite")}
-                      </th>
-                      <th className={`${thClass} text-center`} onClick={() => toggleSort("stock_dispo")}>
-                        Stock{sortIcon("stock_dispo")}
-                      </th>
                       <th className={`${thClass} text-right`} onClick={() => toggleSort("prix_moyen")}>
                         Prix achat{sortIcon("prix_moyen")}
                       </th>
@@ -379,27 +373,21 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
                         <tr key={b.code_moteur} className="hover:bg-gray-50">
                           <td className="px-3 py-3 font-bold text-gray-900">{b.code_moteur}</td>
                           <td className="px-3 py-3">
-                            <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-50">{b.marque || "\u2014"}</Badge>
+                            <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-50">{b.marque || "—"}</Badge>
                           </td>
                           <td className="px-3 py-3 text-center">
-                            <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50">{b.energie || "\u2014"}</Badge>
+                            <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50">{b.energie || "—"}</Badge>
                           </td>
                           <td className="px-3 py-3 text-center">
                             <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold ${urgencyBadge(b.urgence)}`}>
                               {b.urgence}
                             </span>
                           </td>
-                          <td className="px-3 py-3 text-center tabular-nums text-gray-600">{b.quantite || 0}</td>
-                          <td className="px-3 py-3 text-center tabular-nums">
-                            <span className={b.stock_dispo === 0 ? "text-red-600 font-bold" : "text-gray-600"}>
-                              {b.stock_dispo || 0}
-                            </span>
-                          </td>
                           <td className="px-3 py-3 text-right">
                             {b.prix_moyen > 0 ? (
-                              <span className="font-bold text-[#C41E3A] text-base">{Math.round(b.prix_moyen)} \u20AC</span>
+                              <span className="font-bold text-[#C41E3A] text-base">{Math.round(b.prix_moyen)} &euro;</span>
                             ) : (
-                              <span className="text-gray-400">\u2014</span>
+                              <span className="text-gray-400">&mdash;</span>
                             )}
                           </td>
                           <td className="px-3 py-3 text-center">
@@ -423,7 +411,7 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
                         </tr>
                         {expandedBesoin === b.code_moteur && (
                           <tr key={`${b.code_moteur}-form`} className="bg-gray-50">
-                            <td colSpan={8} className="px-4 py-4">
+                            <td colSpan={6} className="px-4 py-4">
                               <div className="flex items-end gap-3 max-w-2xl">
                                 <div className="flex-1">
                                   <Label className="text-xs">Votre prix (EUR)</Label>
