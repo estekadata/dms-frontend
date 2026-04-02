@@ -1,13 +1,11 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-
-const ITEMS_PER_PAGE = 20;
 
 /* ────────── AUTH SCREEN ────────── */
 function AuthScreen({ onAuth }: { onAuth: (centreId: string, centreName: string) => void }) {
@@ -21,7 +19,6 @@ function AuthScreen({ onAuth }: { onAuth: (centreId: string, centreName: string)
     if (!code || !nom) { setError("Code et nom du centre requis"); return; }
     setLoading(true);
 
-    // Verify access code against env
     const expectedCode = process.env.NEXT_PUBLIC_BREAKER_ACCESS_CODE;
     if (expectedCode && code !== expectedCode) {
       setError("Code d'acces invalide");
@@ -29,7 +26,6 @@ function AuthScreen({ onAuth }: { onAuth: (centreId: string, centreName: string)
       return;
     }
 
-    // Find or register the centre in breakers
     const { data: existing } = await supabase
       .from("breakers")
       .select("id, name")
@@ -70,29 +66,14 @@ function AuthScreen({ onAuth }: { onAuth: (centreId: string, centreName: string)
           <div className="space-y-4">
             <div>
               <Label>Code d&apos;acces</Label>
-              <Input
-                type="password"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="Entrez le code d'acces"
-                className="mt-1"
-              />
+              <Input type="password" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Entrez le code" className="mt-1" />
             </div>
             <div>
               <Label>Nom du centre</Label>
-              <Input
-                value={nom}
-                onChange={(e) => setNom(e.target.value)}
-                placeholder="Ex: Centre Auto Toulouse"
-                className="mt-1"
-              />
+              <Input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Ex: Centre Auto Toulouse" className="mt-1" />
             </div>
             {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
-            <Button
-              onClick={handleLogin}
-              disabled={loading}
-              className="w-full bg-[#C41E3A] hover:bg-[#8B1A2B] text-white"
-            >
+            <Button onClick={handleLogin} disabled={loading} className="w-full bg-[#C41E3A] hover:bg-[#8B1A2B] text-white">
               {loading ? "Connexion..." : "Se connecter"}
             </Button>
           </div>
@@ -102,84 +83,38 @@ function AuthScreen({ onAuth }: { onAuth: (centreId: string, centreName: string)
   );
 }
 
-/* ────────── OFFER FORM ────────── */
-function OfferForm({ besoin, centreId, onSubmit }: { besoin: any; centreId: string; onSubmit: () => void }) {
-  const [prix, setPrix] = useState("");
-  const [quantite, setQuantite] = useState("1");
-  const [note, setNote] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
-
-  async function handleSubmit() {
-    if (!prix) return;
-    setSubmitting(true);
-    const { error } = await supabase.from("breaker_click_offers").insert({
-      breaker_id: centreId,
-      code_moteur: besoin.code_moteur,
-      prix: parseFloat(prix),
-      quantite: parseInt(quantite) || 1,
-      note: note || null,
-    });
-    if (error) {
-      alert("Erreur: " + error.message);
-    } else {
-      setSuccess(true);
-      setTimeout(() => { setSuccess(false); onSubmit(); }, 1500);
-    }
-    setSubmitting(false);
-  }
-
-  if (success) return <div className="text-emerald-600 text-sm font-medium py-2">Offre envoyee avec succes !</div>;
-
-  return (
-    <div className="mt-3 p-3 bg-gray-50 rounded-lg space-y-3">
-      <div className="grid grid-cols-3 gap-2">
-        <div>
-          <Label className="text-xs">Prix (EUR)</Label>
-          <Input type="number" value={prix} onChange={(e) => setPrix(e.target.value)} placeholder="350" className="mt-1" />
-        </div>
-        <div>
-          <Label className="text-xs">Quantite</Label>
-          <Input type="number" value={quantite} onChange={(e) => setQuantite(e.target.value)} className="mt-1" />
-        </div>
-        <div>
-          <Label className="text-xs">Note</Label>
-          <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optionnel" className="mt-1" />
-        </div>
-      </div>
-      <Button
-        onClick={handleSubmit}
-        disabled={submitting || !prix}
-        className="bg-[#C41E3A] hover:bg-[#8B1A2B] text-white w-full"
-        size="sm"
-      >
-        {submitting ? "Envoi..." : "Envoyer l'offre"}
-      </Button>
-    </div>
-  );
-}
+/* ────────── TYPES ────────── */
+type SortKey = "code_moteur" | "marque" | "urgence" | "prix_moyen" | "stock_dispo" | "quantite";
+type SortDir = "asc" | "desc";
 
 /* ────────── MAIN PORTAL ────────── */
 function VhuPortal({ centreId, centreName }: { centreId: string; centreName: string }) {
   const [besoins, setBesoins] = useState<any[]>([]);
-  const [totalBesoins, setTotalBesoins] = useState(0);
-  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [searchPlaque, setSearchPlaque] = useState("");
-  const [searchMoteur, setSearchMoteur] = useState("");
+  const [search, setSearch] = useState("");
   const [plaqueResults, setPlaqueResults] = useState<any[] | null>(null);
-  const [moteurResults, setMoteurResults] = useState<any[] | null>(null);
   const [expandedBesoin, setExpandedBesoin] = useState<string | null>(null);
   const [todayCount, setTodayCount] = useState(0);
+  const [sortKey, setSortKey] = useState<SortKey>("urgence");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [page, setPage] = useState(0);
+  const ITEMS_PER_PAGE = 25;
 
-  // Free offer form
+  // Offer form state
+  const [offerPrix, setOfferPrix] = useState("");
+  const [offerQty, setOfferQty] = useState("1");
+  const [offerNote, setOfferNote] = useState("");
+  const [offerSubmitting, setOfferSubmitting] = useState(false);
+  const [offerSuccess, setOfferSuccess] = useState<string | null>(null);
+
+  // Free offer
   const [freeCode, setFreeCode] = useState("");
   const [freeDesc, setFreeDesc] = useState("");
   const [freePrix, setFreePrix] = useState("");
   const [freeNote, setFreeNote] = useState("");
   const [freeSubmitting, setFreeSubmitting] = useState(false);
 
-  // Load stats
+  // Stats
   useEffect(() => {
     async function loadStats() {
       const today = new Date().toISOString().substring(0, 10);
@@ -193,63 +128,118 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
     loadStats();
   }, [centreId]);
 
-  // Load besoins
-  const loadBesoins = useCallback(async () => {
-    setLoading(true);
-    const from = page * ITEMS_PER_PAGE;
-    const to = from + ITEMS_PER_PAGE - 1;
+  // Load ALL besoins (no pagination server-side, we paginate client-side)
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      const { data } = await supabase
+        .from("v_besoins")
+        .select("*")
+        .order("urgence", { ascending: false })
+        .limit(2000);
+      setBesoins(data || []);
+      setLoading(false);
+    }
+    load();
+  }, []);
 
-    const { data, count } = await supabase
-      .from("v_besoins")
-      .select("*", { count: "exact" })
-      .order("urgence", { ascending: false })
-      .range(from, to);
+  // Smart search: detect plate format
+  const isPlateFormat = (s: string) => /^[A-Z]{2}[-\s]?\d{3}[-\s]?[A-Z]{2}$/i.test(s.trim());
 
-    setBesoins(data || []);
-    setTotalBesoins(count || 0);
-    setLoading(false);
-  }, [page]);
+  async function handleSearch() {
+    const q = search.trim();
+    if (!q) { setPlaqueResults(null); return; }
 
-  useEffect(() => { loadBesoins(); }, [loadBesoins]);
-
-  // Plaque search
-  async function handlePlaqueSearch() {
-    if (!searchPlaque) return;
-    const { data } = await supabase
-      .from("plaques_vehicules")
-      .select("*")
-      .ilike("plaque", `%${searchPlaque.toUpperCase()}%`)
-      .limit(10);
-    setPlaqueResults(data || []);
+    if (isPlateFormat(q)) {
+      const normalized = q.toUpperCase().replace(/[-\s]/g, "");
+      const { data } = await supabase
+        .from("plaques_vehicules")
+        .select("*")
+        .or(`plaque.ilike.%${normalized}%,plaque.ilike.%${q.toUpperCase()}%`)
+        .limit(10);
+      setPlaqueResults(data || []);
+    } else {
+      setPlaqueResults(null);
+    }
+    setPage(0);
   }
 
-  // Motor search
-  async function handleMoteurSearch() {
-    if (!searchMoteur) return;
-    const { data } = await supabase
-      .from("v_besoins")
-      .select("*")
-      .ilike("code_moteur", `%${searchMoteur.toUpperCase()}%`)
-      .limit(20);
-    setMoteurResults(data || []);
+  // Filter + sort besoins
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let list = besoins;
+
+    if (q && !isPlateFormat(search)) {
+      list = list.filter((b) =>
+        b.code_moteur?.toLowerCase().includes(q) ||
+        b.marque?.toLowerCase().includes(q) ||
+        b.energie?.toLowerCase().includes(q) ||
+        b.type_moteur?.toLowerCase().includes(q)
+      );
+    }
+
+    return [...list].sort((a, b) => {
+      const av = a[sortKey] ?? 0;
+      const bv = b[sortKey] ?? 0;
+      if (typeof av === "string" && typeof bv === "string") {
+        return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+      }
+      return sortDir === "asc" ? (av as number) - (bv as number) : (bv as number) - (av as number);
+    });
+  }, [besoins, search, sortKey, sortDir]);
+
+  const paginated = filtered.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) setSortDir(sortDir === "asc" ? "desc" : "asc");
+    else { setSortKey(key); setSortDir(key === "urgence" ? "desc" : "asc"); }
   }
 
-  // Free offer submit
+  function sortIcon(key: SortKey) {
+    if (sortKey !== key) return " \u2195";
+    return sortDir === "asc" ? " \u2191" : " \u2193";
+  }
+
+  // Submit click offer
+  async function submitOffer(besoin: any) {
+    if (!offerPrix) return;
+    setOfferSubmitting(true);
+    const { error } = await supabase.from("breaker_click_offers").insert({
+      breaker_id: centreId,
+      code_moteur: besoin.code_moteur,
+      marque: besoin.marque || null,
+      energie: besoin.energie || null,
+      prix_demande: parseFloat(offerPrix),
+      qty: parseInt(offerQty) || 1,
+      note: offerNote || null,
+    });
+    if (error) {
+      alert("Erreur: " + error.message);
+    } else {
+      setOfferSuccess(besoin.code_moteur);
+      setOfferPrix(""); setOfferQty("1"); setOfferNote("");
+      setTodayCount((c) => c + 1);
+      setTimeout(() => { setOfferSuccess(null); setExpandedBesoin(null); }, 2000);
+    }
+    setOfferSubmitting(false);
+  }
+
+  // Submit free offer
   async function submitFreeOffer() {
     if (!freeCode && !freeDesc) return;
     setFreeSubmitting(true);
     const { error } = await supabase.from("breaker_free_offers").insert({
       breaker_id: centreId,
-      code_moteur: freeCode || null,
-      description: freeDesc || null,
-      prix: freePrix ? parseFloat(freePrix) : null,
+      texte: freeDesc || freeCode || null,
+      prix_demande: freePrix ? parseFloat(freePrix) : null,
       note: freeNote || null,
     });
     if (error) {
       alert("Erreur: " + error.message);
     } else {
       setFreeCode(""); setFreeDesc(""); setFreePrix(""); setFreeNote("");
-      alert("Offre libre envoyee !");
+      alert("Offre envoyee !");
     }
     setFreeSubmitting(false);
   }
@@ -260,209 +250,268 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
     window.location.reload();
   }
 
-  const totalPages = Math.ceil(totalBesoins / ITEMS_PER_PAGE);
-
-  const urgencyColor = (u: number) => {
-    if (u >= 8) return "bg-red-100 text-red-700";
-    if (u >= 5) return "bg-amber-100 text-amber-700";
-    return "bg-gray-100 text-gray-600";
+  const urgencyBadge = (u: number) => {
+    if (u >= 8) return "bg-red-600 text-white";
+    if (u >= 5) return "bg-amber-500 text-white";
+    return "bg-gray-300 text-gray-700";
   };
 
+  const thClass = "px-3 py-3 cursor-pointer hover:bg-gray-200 select-none transition text-xs uppercase whitespace-nowrap";
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Portail VHU</h1>
-          <p className="text-gray-500">Centre : <span className="font-semibold text-gray-700">{centreName}</span></p>
+      <div className="bg-white border-b shadow-sm px-6 py-4">
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Portail VHU</h1>
+            <p className="text-sm text-gray-500">Centre : <span className="font-semibold text-gray-700">{centreName}</span></p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-[#C41E3A]">{todayCount}</p>
+              <p className="text-[10px] text-gray-400 uppercase">offres aujourd&apos;hui</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-gray-700">{filtered.length}</p>
+              <p className="text-[10px] text-gray-400 uppercase">besoins</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleLogout}>Deconnexion</Button>
+          </div>
         </div>
-        <Button variant="outline" onClick={handleLogout}>Deconnexion</Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-gray-500 font-semibold uppercase">Offres aujourd&apos;hui</p>
-            <p className="text-2xl font-bold text-[#C41E3A]">{todayCount}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-gray-500 font-semibold uppercase">Besoins actifs</p>
-            <p className="text-2xl font-bold text-gray-700">{totalBesoins}</p>
-          </CardContent>
-        </Card>
-      </div>
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        {/* Search bar */}
+        <div className="mb-6">
+          <div className="flex gap-2">
+            <Input
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); if (!e.target.value) setPlaqueResults(null); }}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              placeholder="Rechercher par plaque (AA-123-BB), code moteur, marque..."
+              className="text-lg py-6 uppercase"
+            />
+            <Button onClick={handleSearch} className="bg-[#C41E3A] hover:bg-[#8B1A2B] text-white px-8 py-6">
+              Chercher
+            </Button>
+          </div>
 
-      {/* Search section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* Plate search */}
-        <Card>
-          <CardContent className="p-5">
-            <h3 className="font-semibold text-gray-700 mb-3">Recherche par plaque</h3>
-            <div className="flex gap-2">
-              <Input
-                value={searchPlaque}
-                onChange={(e) => setSearchPlaque(e.target.value)}
-                placeholder="AA-123-BB"
-                className="uppercase"
-                onKeyDown={(e) => e.key === "Enter" && handlePlaqueSearch()}
-              />
-              <Button onClick={handlePlaqueSearch} className="bg-[#C41E3A] hover:bg-[#8B1A2B] text-white">Chercher</Button>
-            </div>
-            {plaqueResults !== null && (
-              <div className="mt-3">
-                {plaqueResults.length === 0 ? (
-                  <p className="text-sm text-gray-400">Aucun resultat</p>
-                ) : (
-                  <div className="space-y-2">
-                    {plaqueResults.map((p, i) => (
-                      <div key={i} className="border rounded-lg p-2 text-sm">
-                        <span className="font-mono font-bold">{p.plaque}</span>
-                        {p.code_moteur && <span className="ml-2 text-gray-500">Moteur: {p.code_moteur}</span>}
-                        {p.marque && <span className="ml-2 text-gray-500">{p.marque}</span>}
-                        {p.modele && <span className="ml-1 text-gray-400">{p.modele}</span>}
+          {/* Plate results */}
+          {plaqueResults !== null && (
+            <div className="mt-3 bg-white rounded-xl shadow-sm border p-4">
+              <h4 className="text-sm font-semibold text-gray-600 mb-2">Resultats plaque</h4>
+              {plaqueResults.length === 0 ? (
+                <p className="text-sm text-gray-400">Aucun vehicule trouve</p>
+              ) : (
+                <div className="space-y-2">
+                  {plaqueResults.map((p, i) => (
+                    <div key={i} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                      <span className="font-mono font-bold text-lg bg-blue-600 text-white px-3 py-1 rounded">{p.plaque}</span>
+                      <div>
+                        <p className="font-semibold">{p.code_moteur || "Code moteur inconnu"}</p>
+                        <p className="text-sm text-gray-500">{[p.marque, p.modele].filter(Boolean).join(" ")}</p>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Motor search */}
-        <Card>
-          <CardContent className="p-5">
-            <h3 className="font-semibold text-gray-700 mb-3">Recherche moteur</h3>
-            <div className="flex gap-2">
-              <Input
-                value={searchMoteur}
-                onChange={(e) => setSearchMoteur(e.target.value)}
-                placeholder="Code moteur..."
-                className="uppercase"
-                onKeyDown={(e) => e.key === "Enter" && handleMoteurSearch()}
-              />
-              <Button onClick={handleMoteurSearch} className="bg-[#C41E3A] hover:bg-[#8B1A2B] text-white">Chercher</Button>
+                      {p.code_moteur && (
+                        <Button
+                          size="sm"
+                          className="ml-auto bg-[#C41E3A] hover:bg-[#8B1A2B] text-white"
+                          onClick={() => { setSearch(p.code_moteur); setPlaqueResults(null); }}
+                        >
+                          Voir besoins
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            {moteurResults !== null && (
-              <div className="mt-3">
-                {moteurResults.length === 0 ? (
-                  <p className="text-sm text-gray-400">Aucun besoin correspondant</p>
-                ) : (
-                  <div className="space-y-2">
-                    {moteurResults.map((b, i) => (
-                      <div key={i} className="border rounded-lg p-2 text-sm flex items-center justify-between">
-                        <div>
-                          <span className="font-mono font-bold">{b.code_moteur}</span>
-                          {b.marque && <Badge className="ml-2 bg-blue-100 text-blue-700">{b.marque}</Badge>}
-                          {b.energie && <Badge className="ml-1 bg-gray-100 text-gray-600">{b.energie}</Badge>}
-                        </div>
-                        {b.prix_moyen && <span className="font-semibold text-[#C41E3A]">{Math.round(b.prix_moyen)} EUR moy.</span>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </div>
 
-      {/* Besoins list */}
-      <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
-        <h3 className="font-semibold text-gray-700 mb-4">Besoins en cours ({totalBesoins})</h3>
-        {loading ? (
-          <div className="text-center py-10 text-gray-400">Chargement...</div>
-        ) : (
-          <div className="space-y-3">
-            {besoins.map((b, i) => (
-              <div key={i} className="border rounded-xl p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <Badge className="font-mono bg-gray-900 text-white hover:bg-gray-900">{b.code_moteur || "—"}</Badge>
-                    {b.urgence != null && <Badge className={urgencyColor(b.urgence)}>Urgence {b.urgence}</Badge>}
-                    {b.prix_moyen && <span className="text-sm text-gray-600">{Math.round(b.prix_moyen)} EUR moy.</span>}
-                    {b.marque && <Badge className="bg-blue-50 text-blue-700">{b.marque}</Badge>}
-                    {b.energie && <Badge className="bg-emerald-50 text-emerald-700">{b.energie}</Badge>}
-                    {b.quantite && <span className="text-xs text-gray-400">Qte: {b.quantite}</span>}
-                  </div>
-                  <Button
-                    size="sm"
-                    variant={expandedBesoin === b.code_moteur ? "outline" : "default"}
-                    className={expandedBesoin === b.code_moteur ? "" : "bg-[#C41E3A] hover:bg-[#8B1A2B] text-white"}
-                    onClick={() => setExpandedBesoin(expandedBesoin === b.code_moteur ? null : b.code_moteur)}
-                  >
-                    {expandedBesoin === b.code_moteur ? "Fermer" : "Je l'ai"}
+        {/* Besoins table */}
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
+          <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
+            <h3 className="font-semibold text-gray-700">
+              Moteurs recherches ({filtered.length})
+              {search && !isPlateFormat(search) && <span className="text-sm font-normal text-gray-400 ml-2">filtre : &quot;{search}&quot;</span>}
+            </h3>
+            {search && (
+              <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setPlaqueResults(null); }}>
+                Effacer filtre
+              </Button>
+            )}
+          </div>
+
+          {loading ? (
+            <div className="text-center py-12 text-gray-400">Chargement...</div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-gray-500 border-b">
+                    <tr>
+                      <th className={`${thClass} text-left`} onClick={() => toggleSort("code_moteur")}>
+                        Code moteur{sortIcon("code_moteur")}
+                      </th>
+                      <th className={`${thClass} text-left`} onClick={() => toggleSort("marque")}>
+                        Marque{sortIcon("marque")}
+                      </th>
+                      <th className={`${thClass} text-center`}>Energie</th>
+                      <th className={`${thClass} text-center`} onClick={() => toggleSort("urgence")}>
+                        Urgence{sortIcon("urgence")}
+                      </th>
+                      <th className={`${thClass} text-center`} onClick={() => toggleSort("quantite")}>
+                        Vendus{sortIcon("quantite")}
+                      </th>
+                      <th className={`${thClass} text-center`} onClick={() => toggleSort("stock_dispo")}>
+                        Stock{sortIcon("stock_dispo")}
+                      </th>
+                      <th className={`${thClass} text-right`} onClick={() => toggleSort("prix_moyen")}>
+                        Prix achat{sortIcon("prix_moyen")}
+                      </th>
+                      <th className="px-3 py-3 text-center text-xs uppercase">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {paginated.map((b) => (
+                      <>
+                        <tr key={b.code_moteur} className="hover:bg-gray-50">
+                          <td className="px-3 py-3 font-bold text-gray-900">{b.code_moteur}</td>
+                          <td className="px-3 py-3">
+                            <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-50">{b.marque || "\u2014"}</Badge>
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50">{b.energie || "\u2014"}</Badge>
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold ${urgencyBadge(b.urgence)}`}>
+                              {b.urgence}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 text-center tabular-nums text-gray-600">{b.quantite || 0}</td>
+                          <td className="px-3 py-3 text-center tabular-nums">
+                            <span className={b.stock_dispo === 0 ? "text-red-600 font-bold" : "text-gray-600"}>
+                              {b.stock_dispo || 0}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 text-right">
+                            {b.prix_moyen > 0 ? (
+                              <span className="font-bold text-[#C41E3A] text-base">{Math.round(b.prix_moyen)} \u20AC</span>
+                            ) : (
+                              <span className="text-gray-400">\u2014</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            {offerSuccess === b.code_moteur ? (
+                              <span className="text-emerald-600 font-medium text-xs">Envoye !</span>
+                            ) : (
+                              <Button
+                                size="sm"
+                                className={expandedBesoin === b.code_moteur
+                                  ? "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                                  : "bg-[#C41E3A] hover:bg-[#8B1A2B] text-white"}
+                                onClick={() => {
+                                  setExpandedBesoin(expandedBesoin === b.code_moteur ? null : b.code_moteur);
+                                  setOfferPrix(""); setOfferQty("1"); setOfferNote("");
+                                }}
+                              >
+                                {expandedBesoin === b.code_moteur ? "Annuler" : "Je l'ai"}
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                        {expandedBesoin === b.code_moteur && (
+                          <tr key={`${b.code_moteur}-form`} className="bg-gray-50">
+                            <td colSpan={8} className="px-4 py-4">
+                              <div className="flex items-end gap-3 max-w-2xl">
+                                <div className="flex-1">
+                                  <Label className="text-xs">Votre prix (EUR)</Label>
+                                  <Input
+                                    type="number"
+                                    value={offerPrix}
+                                    onChange={(e) => setOfferPrix(e.target.value)}
+                                    placeholder={b.prix_moyen > 0 ? `~${Math.round(b.prix_moyen)}` : "Prix"}
+                                    className="mt-1"
+                                    autoFocus
+                                  />
+                                </div>
+                                <div className="w-20">
+                                  <Label className="text-xs">Qte</Label>
+                                  <Input type="number" value={offerQty} onChange={(e) => setOfferQty(e.target.value)} className="mt-1" />
+                                </div>
+                                <div className="flex-1">
+                                  <Label className="text-xs">Note</Label>
+                                  <Input value={offerNote} onChange={(e) => setOfferNote(e.target.value)} placeholder="Optionnel" className="mt-1" />
+                                </div>
+                                <Button
+                                  onClick={() => submitOffer(b)}
+                                  disabled={offerSubmitting || !offerPrix}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-6"
+                                >
+                                  {offerSubmitting ? "..." : "Envoyer"}
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {filtered.length === 0 && <p className="text-center py-10 text-gray-400">Aucun besoin trouve</p>}
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 py-4 border-t">
+                  <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(page - 1)}>
+                    Precedent
+                  </Button>
+                  <span className="text-sm text-gray-500">Page {page + 1} / {totalPages}</span>
+                  <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
+                    Suivant
                   </Button>
                 </div>
-                {expandedBesoin === b.code_moteur && (
-                  <OfferForm besoin={b} centreId={centreId} onSubmit={() => setExpandedBesoin(null)} />
-                )}
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Free offer */}
+        <Card className="border-[#C41E3A]/20">
+          <CardContent className="p-6">
+            <h3 className="font-semibold text-gray-800 mb-1">Proposer un moteur</h3>
+            <p className="text-sm text-gray-400 mb-4">Vous avez un moteur en stock ? Proposez-le meme s&apos;il n&apos;est pas dans la liste.</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div>
+                <Label className="text-xs">Code moteur</Label>
+                <Input value={freeCode} onChange={(e) => setFreeCode(e.target.value)} placeholder="K9K-766" className="mt-1 uppercase" />
               </div>
-            ))}
-          </div>
-        )}
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-6">
+              <div>
+                <Label className="text-xs">Description</Label>
+                <Input value={freeDesc} onChange={(e) => setFreeDesc(e.target.value)} placeholder="Moteur diesel 1.5..." className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-xs">Prix (EUR)</Label>
+                <Input type="number" value={freePrix} onChange={(e) => setFreePrix(e.target.value)} placeholder="350" className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-xs">Note</Label>
+                <Input value={freeNote} onChange={(e) => setFreeNote(e.target.value)} placeholder="Optionnel" className="mt-1" />
+              </div>
+            </div>
             <Button
-              variant="outline"
-              size="sm"
-              disabled={page === 0}
-              onClick={() => setPage(page - 1)}
+              onClick={submitFreeOffer}
+              disabled={freeSubmitting || (!freeCode && !freeDesc)}
+              className="mt-4 bg-[#C41E3A] hover:bg-[#8B1A2B] text-white"
             >
-              Precedent
+              {freeSubmitting ? "Envoi..." : "Envoyer l'offre"}
             </Button>
-            <span className="text-sm text-gray-500">
-              Page {page + 1} / {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages - 1}
-              onClick={() => setPage(page + 1)}
-            >
-              Suivant
-            </Button>
-          </div>
-        )}
+          </CardContent>
+        </Card>
       </div>
-
-      {/* Free offer section */}
-      <Card className="border-[#C41E3A]/20">
-        <CardContent className="p-6">
-          <h3 className="font-semibold text-gray-800 mb-4">Proposer une offre libre</h3>
-          <p className="text-sm text-gray-500 mb-4">Proposez un moteur ou une piece que vous avez en stock, meme sans besoin correspondant.</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <Label>Code moteur</Label>
-              <Input value={freeCode} onChange={(e) => setFreeCode(e.target.value)} placeholder="N47D20A" className="mt-1 uppercase" />
-            </div>
-            <div>
-              <Label>Description</Label>
-              <Input value={freeDesc} onChange={(e) => setFreeDesc(e.target.value)} placeholder="Moteur diesel 2.0..." className="mt-1" />
-            </div>
-            <div>
-              <Label>Prix (EUR)</Label>
-              <Input type="number" value={freePrix} onChange={(e) => setFreePrix(e.target.value)} placeholder="400" className="mt-1" />
-            </div>
-            <div>
-              <Label>Note</Label>
-              <Input value={freeNote} onChange={(e) => setFreeNote(e.target.value)} placeholder="Optionnel" className="mt-1" />
-            </div>
-          </div>
-          <Button
-            onClick={submitFreeOffer}
-            disabled={freeSubmitting || (!freeCode && !freeDesc)}
-            className="mt-4 bg-[#C41E3A] hover:bg-[#8B1A2B] text-white"
-          >
-            {freeSubmitting ? "Envoi..." : "Envoyer l'offre libre"}
-          </Button>
-        </CardContent>
-      </Card>
     </div>
   );
 }
