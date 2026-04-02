@@ -43,7 +43,7 @@ export default function BesoinsPage() {
       setLoading(true);
       const { data, error } = await supabase.rpc("get_besoins_moteurs", {
         p_limit: 5000,
-      });
+      }).limit(5000);
 
       if (!error && data) {
         setBesoins(
