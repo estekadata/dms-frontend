@@ -101,7 +101,7 @@ export default function LoginPage() {
                   type="button"
                   variant="outline"
                   className="flex-1"
-                  onClick={() => router.push("/vhu")}
+                  onClick={() => window.location.href = "/vhu"
                 >
                   Centres VHU
                 </Button>
