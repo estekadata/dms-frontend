@@ -58,6 +58,10 @@ export default function PrixPage() {
   const [results, setResults] = useState<PricingResult[]>([]);
   const [status, setStatus] = useState<"idle" | "parsing" | "computing" | "done" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [filterMarque, setFilterMarque] = useState("");
+  const [filterCode, setFilterCode] = useState("");
+  const [editingCell, setEditingCell] = useState<{ code: string; field: "prix_achat_propose" | "prix_vente_propose" } | null>(null);
+  const [editValue, setEditValue] = useState("");
 
   // Parse Excel file
   function parseExcel(file: File, onParsed: (rows: any[]) => void) {
@@ -271,6 +275,41 @@ export default function PrixPage() {
     }
   }
 
+  // Edit a single price
+  async function handlePriceEdit(code: string, field: "prix_achat_propose" | "prix_vente_propose", newVal: number) {
+    setResults((prev) =>
+      prev.map((r) => {
+        if (r.code_moteur !== code) return r;
+        const updated = { ...r, [field]: newVal };
+        if (field === "prix_achat_propose" && updated.prix_achat_propose > 0) {
+          updated.marge_pct = Math.round(((updated.prix_vente_propose - updated.prix_achat_propose) / updated.prix_achat_propose) * 100);
+        }
+        return updated;
+      })
+    );
+    // Save override
+    const row = results.find((r) => r.code_moteur === code);
+    if (row) {
+      const prix = field === "prix_achat_propose" ? newVal : row.prix_achat_propose;
+      await supabase.from("besoins_overrides").upsert({
+        code_moteur: code,
+        prix_override: prix,
+        statut: "actif",
+        modifie_par: "prix_page_manual",
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "code_moteur" });
+    }
+    setEditingCell(null);
+  }
+
+  // Get unique marques for filter
+  const marques = [...new Set(results.map((r) => r.marque).filter(Boolean))].sort();
+  const filteredResults = results.filter((r) => {
+    if (filterMarque && r.marque !== filterMarque) return false;
+    if (filterCode && !r.code_moteur.toLowerCase().includes(filterCode.toLowerCase())) return false;
+    return true;
+  });
+
   // CSV download
   function downloadCSV() {
     if (results.length === 0) return;
@@ -402,12 +441,37 @@ export default function PrixPage() {
       {/* Results table */}
       {results.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="p-4 border-b flex items-center justify-between">
-            <h3 className="font-semibold text-gray-800">{results.length} recommandations</h3>
-            <div className="flex gap-4 text-sm text-gray-500">
-              <span>Marge cible: {margeCible}%</span>
-              <span>Bonus urgence: {bonusUrgence}</span>
-              <span>Malus surstock: {malusSurstock}</span>
+          <div className="p-4 border-b">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-gray-800">{filteredResults.length} / {results.length} recommandations</h3>
+              <div className="flex gap-4 text-sm text-gray-500">
+                <span>Marge: {margeCible}%</span>
+                <span>Urgence: {bonusUrgence}</span>
+                <span>Surstock: {malusSurstock}</span>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Input
+                placeholder="Filtrer par code moteur..."
+                value={filterCode}
+                onChange={(e) => setFilterCode(e.target.value)}
+                className="max-w-xs"
+              />
+              <select
+                value={filterMarque}
+                onChange={(e) => setFilterMarque(e.target.value)}
+                className="border rounded-lg px-3 py-2 text-sm bg-white"
+              >
+                <option value="">Toutes les marques</option>
+                {marques.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+              {(filterCode || filterMarque) && (
+                <button onClick={() => { setFilterCode(""); setFilterMarque(""); }} className="text-xs text-gray-400 hover:text-gray-600">
+                  Effacer filtres
+                </button>
+              )}
             </div>
           </div>
           <div className="overflow-x-auto">
@@ -418,25 +482,21 @@ export default function PrixPage() {
                   <th className="px-3 py-3 text-left">Marque</th>
                   <th className="px-3 py-3 text-right">Catalogue</th>
                   <th className="px-3 py-3 text-right">Achat actuel</th>
-                  <th className="px-3 py-3 text-right">Vente actuel</th>
                   <th className="px-3 py-3 text-center">Stock</th>
                   <th className="px-3 py-3 text-center">Vendus</th>
                   <th className="px-3 py-3 text-center">Score</th>
                   <th className="px-3 py-3 text-right font-bold">Achat propose</th>
                   <th className="px-3 py-3 text-right font-bold">Vente propose</th>
                   <th className="px-3 py-3 text-right">Marge</th>
-                  <th className="px-3 py-3 text-right">Delta achat</th>
-                  <th className="px-3 py-3 text-right">Delta vente</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {results.map((r) => (
+                {filteredResults.map((r) => (
                   <tr key={r.code_moteur} className="hover:bg-gray-50">
                     <td className="px-3 py-2 font-mono font-semibold text-xs">{r.code_moteur}</td>
-                    <td className="px-3 py-2 text-gray-600 text-xs">{r.marque || "—"}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{r.prix_catalogue.toLocaleString("fr-FR")} EUR</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-gray-500">{r.prix_achat_actuel ? `${r.prix_achat_actuel.toLocaleString("fr-FR")} EUR` : "—"}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-gray-500">{r.prix_vente_actuel ? `${r.prix_vente_actuel.toLocaleString("fr-FR")} EUR` : "—"}</td>
+                    <td className="px-3 py-2 text-gray-600 text-xs">{r.marque || "\u2014"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{r.prix_catalogue ? `${r.prix_catalogue} EUR` : "\u2014"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-gray-500">{r.prix_achat_actuel ? `${r.prix_achat_actuel} EUR` : "\u2014"}</td>
                     <td className="px-3 py-2 text-center tabular-nums">{r.nb_en_stock}</td>
                     <td className="px-3 py-2 text-center tabular-nums">{r.nb_vendus}</td>
                     <td className="px-3 py-2 text-center">
@@ -448,15 +508,45 @@ export default function PrixPage() {
                         {r.score}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums font-bold text-[#C41E3A]">{r.prix_achat_propose.toLocaleString("fr-FR")} EUR</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-bold text-blue-700">{r.prix_vente_propose.toLocaleString("fr-FR")} EUR</td>
+                    <td className="px-3 py-2 text-right">
+                      {editingCell?.code === r.code_moteur && editingCell?.field === "prix_achat_propose" ? (
+                        <input
+                          type="number"
+                          autoFocus
+                          className="w-20 border rounded px-1 py-0.5 text-right text-sm"
+                          defaultValue={r.prix_achat_propose}
+                          onBlur={(e) => handlePriceEdit(r.code_moteur, "prix_achat_propose", parseInt(e.target.value) || 0)}
+                          onKeyDown={(e) => { if (e.key === "Enter") handlePriceEdit(r.code_moteur, "prix_achat_propose", parseInt((e.target as HTMLInputElement).value) || 0); if (e.key === "Escape") setEditingCell(null); }}
+                        />
+                      ) : (
+                        <span
+                          className="font-bold text-[#C41E3A] cursor-pointer hover:underline"
+                          onClick={() => { setEditingCell({ code: r.code_moteur, field: "prix_achat_propose" }); setEditValue(String(r.prix_achat_propose)); }}
+                        >
+                          {r.prix_achat_propose} EUR
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      {editingCell?.code === r.code_moteur && editingCell?.field === "prix_vente_propose" ? (
+                        <input
+                          type="number"
+                          autoFocus
+                          className="w-20 border rounded px-1 py-0.5 text-right text-sm"
+                          defaultValue={r.prix_vente_propose}
+                          onBlur={(e) => handlePriceEdit(r.code_moteur, "prix_vente_propose", parseInt(e.target.value) || 0)}
+                          onKeyDown={(e) => { if (e.key === "Enter") handlePriceEdit(r.code_moteur, "prix_vente_propose", parseInt((e.target as HTMLInputElement).value) || 0); if (e.key === "Escape") setEditingCell(null); }}
+                        />
+                      ) : (
+                        <span
+                          className="font-bold text-blue-700 cursor-pointer hover:underline"
+                          onClick={() => { setEditingCell({ code: r.code_moteur, field: "prix_vente_propose" }); setEditValue(String(r.prix_vente_propose)); }}
+                        >
+                          {r.prix_vente_propose} EUR
+                        </span>
+                      )}
+                    </td>
                     <td className="px-3 py-2 text-right tabular-nums font-semibold text-emerald-600">{r.marge_pct}%</td>
-                    <td className={`px-3 py-2 text-right tabular-nums text-xs ${r.delta_achat_pct > 0 ? "text-red-600" : r.delta_achat_pct < 0 ? "text-emerald-600" : "text-gray-400"}`}>
-                      {r.delta_achat_pct > 0 ? "+" : ""}{r.delta_achat_pct}%
-                    </td>
-                    <td className={`px-3 py-2 text-right tabular-nums text-xs ${r.delta_vente_pct > 0 ? "text-emerald-600" : r.delta_vente_pct < 0 ? "text-red-600" : "text-gray-400"}`}>
-                      {r.delta_vente_pct > 0 ? "+" : ""}{r.delta_vente_pct}%
-                    </td>
                   </tr>
                 ))}
               </tbody>
