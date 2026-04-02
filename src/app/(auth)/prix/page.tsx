@@ -17,29 +17,38 @@ type CatalogRow = {
 
 type MoteurMapping = {
   code_moteur: string;
+  marque?: string;
+  energie?: string;
   prix_achat_moteur?: number;
   prix_vente_moteur?: number;
   nb_en_stock?: number;
   nb_vendus?: number;
-  jours_stock_moyen?: number;
+  vendus_3m?: number;
+  vendus_6m?: number;
+  vendus_12m?: number;
+  vendus_24m?: number;
   urgence?: number;
 };
+
+type SortKey = "code_moteur" | "marque" | "prix_achat_actuel" | "nb_en_stock" | "vendus_3m" | "vendus_6m" | "vendus_12m" | "vendus_24m" | "urgence" | "score" | "prix_achat_propose" | "prix_vente_propose" | "marge_pct";
+type SortDir = "asc" | "desc";
 
 type PricingResult = {
   code_moteur: string;
   marque?: string;
+  energie?: string;
   prix_catalogue: number;
   prix_achat_actuel: number;
-  prix_vente_actuel: number;
   nb_en_stock: number;
-  nb_vendus: number;
+  vendus_3m: number;
+  vendus_6m: number;
+  vendus_12m: number;
+  vendus_24m: number;
   urgence: number;
   score: number;
   prix_achat_propose: number;
   prix_vente_propose: number;
   marge_pct: number;
-  delta_achat_pct: number;
-  delta_vente_pct: number;
 };
 
 export default function PrixPage() {
@@ -62,6 +71,8 @@ export default function PrixPage() {
   const [filterCode, setFilterCode] = useState("");
   const [editingCell, setEditingCell] = useState<{ code: string; field: "prix_achat_propose" | "prix_vente_propose" } | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("score");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   // Parse Excel file
   function parseExcel(file: File, onParsed: (rows: any[]) => void) {
@@ -121,10 +132,10 @@ export default function PrixPage() {
     });
   }
 
-  // Load moteurs data from Supabase using get_besoins_moteurs RPC
+  // Load moteurs data from Supabase using get_moteurs_prix_data RPC
   async function loadMoteursFromDB() {
     setStatus("parsing");
-    const { data, error } = await supabase.rpc("get_besoins_moteurs", { p_limit: 2000 });
+    const { data, error } = await supabase.rpc("get_moteurs_prix_data", { p_limit: 2000 });
 
     if (error) {
       setErrorMsg("Erreur chargement BDD: " + error.message);
@@ -134,14 +145,16 @@ export default function PrixPage() {
 
     const parsed: MoteurMapping[] = (data || []).map((r: any) => ({
       code_moteur: r.code_moteur || "",
-      prix_achat_moteur: Math.round(r.prix_moy_achat_3m || 0),
-      prix_vente_moteur: 0,
-      nb_en_stock: r.nb_stock_dispo || 0,
-      nb_vendus: r.nb_vendus_3m || 0,
-      urgence: r.nb_stock_dispo === 0 && r.nb_vendus_3m > 0 ? 10
-        : r.nb_stock_dispo < r.nb_vendus_3m ? 7
-        : r.nb_stock_dispo > r.nb_vendus_3m * 2 ? 2
-        : 5,
+      marque: r.marque || "",
+      energie: r.energie || "",
+      prix_achat_moteur: Math.round(r.prix_achat_dernier || 0),
+      nb_en_stock: r.nb_en_stock || 0,
+      vendus_3m: r.vendus_3m || 0,
+      vendus_6m: r.vendus_6m || 0,
+      vendus_12m: r.vendus_12m || 0,
+      vendus_24m: r.vendus_24m || 0,
+      nb_vendus: r.vendus_6m || 0,
+      urgence: r.urgence || 5,
     }));
 
     setMoteursData(parsed);
@@ -174,10 +187,13 @@ export default function PrixPage() {
 
       const prixCatalogue = cat?.prix_catalogue || 0;
       const prixAchatActuel = moteur?.prix_achat_moteur || 0;
-      const prixVenteActuel = moteur?.prix_vente_moteur || 0;
       const nbStock = moteur?.nb_en_stock || 0;
       const nbVendus = moteur?.nb_vendus || 0;
       const urgence = moteur?.urgence || 0;
+      const v3m = moteur?.vendus_3m || 0;
+      const v6m = moteur?.vendus_6m || 0;
+      const v12m = moteur?.vendus_12m || 0;
+      const v24m = moteur?.vendus_24m || 0;
 
       let score = 50;
       score += urgence * (bonusUrgence / 10);
@@ -202,30 +218,25 @@ export default function PrixPage() {
       const margePct = prixAchatPropose > 0
         ? Math.round(((prixVentePropose - prixAchatPropose) / prixAchatPropose) * 100)
         : 0;
-      const deltaAchatPct = prixAchatActuel > 0
-        ? Math.round(((prixAchatPropose - prixAchatActuel) / prixAchatActuel) * 100)
-        : 0;
-      const deltaVentePct = prixVenteActuel > 0
-        ? Math.round(((prixVentePropose - prixVenteActuel) / prixVenteActuel) * 100)
-        : 0;
 
       if (prixAchatPropose === 0 && prixVentePropose === 0) continue;
 
       output.push({
         code_moteur: code,
-        marque: cat?.marque,
+        marque: moteur?.marque || cat?.marque,
+        energie: moteur?.energie,
         prix_catalogue: prixCatalogue,
         prix_achat_actuel: prixAchatActuel,
-        prix_vente_actuel: prixVenteActuel,
         nb_en_stock: nbStock,
-        nb_vendus: nbVendus,
+        vendus_3m: v3m,
+        vendus_6m: v6m,
+        vendus_12m: v12m,
+        vendus_24m: v24m,
         urgence,
         score: Math.round(score),
         prix_achat_propose: prixAchatPropose,
         prix_vente_propose: prixVentePropose,
         marge_pct: margePct,
-        delta_achat_pct: deltaAchatPct,
-        delta_vente_pct: deltaVentePct,
       });
     }
 
@@ -278,13 +289,30 @@ export default function PrixPage() {
     setEditingCell(null);
   }
 
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) setSortDir(sortDir === "asc" ? "desc" : "asc");
+    else { setSortKey(key); setSortDir(key === "code_moteur" || key === "marque" ? "asc" : "desc"); }
+  }
+  function sortIcon(key: SortKey) {
+    if (sortKey !== key) return " \u2195";
+    return sortDir === "asc" ? " \u2191" : " \u2193";
+  }
+
   // Get unique marques for filter
   const marques = [...new Set(results.map((r) => r.marque).filter(Boolean))].sort();
-  const filteredResults = results.filter((r) => {
-    if (filterMarque && r.marque !== filterMarque) return false;
-    if (filterCode && !r.code_moteur.toLowerCase().includes(filterCode.toLowerCase())) return false;
-    return true;
-  });
+  const filteredResults = results
+    .filter((r) => {
+      if (filterMarque && r.marque !== filterMarque) return false;
+      if (filterCode && !r.code_moteur.toLowerCase().includes(filterCode.toLowerCase())) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const av = (a as any)[sortKey] ?? 0;
+      const bv = (b as any)[sortKey] ?? 0;
+      if (typeof av === "string" && typeof bv === "string")
+        return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+      return sortDir === "asc" ? av - bv : bv - av;
+    });
 
   // CSV download
   function downloadCSV() {
@@ -454,75 +482,71 @@ export default function PrixPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
                 <tr>
-                  <th className="px-3 py-3 text-left">Code</th>
-                  <th className="px-3 py-3 text-left">Marque</th>
-                  <th className="px-3 py-3 text-right">Catalogue</th>
-                  <th className="px-3 py-3 text-right">Achat actuel</th>
-                  <th className="px-3 py-3 text-center">Stock</th>
-                  <th className="px-3 py-3 text-center">Vendus</th>
-                  <th className="px-3 py-3 text-center">Score</th>
-                  <th className="px-3 py-3 text-right font-bold">Achat propose</th>
-                  <th className="px-3 py-3 text-right font-bold">Vente propose</th>
-                  <th className="px-3 py-3 text-right">Marge</th>
+                  {([
+                    ["code_moteur", "Code", "text-left"],
+                    ["marque", "Marque", "text-left"],
+                    ["prix_achat_actuel", "Achat actuel", "text-right"],
+                    ["nb_en_stock", "Stock", "text-center"],
+                    ["vendus_3m", "3 mois", "text-center"],
+                    ["vendus_6m", "6 mois", "text-center"],
+                    ["vendus_12m", "12 mois", "text-center"],
+                    ["vendus_24m", "24 mois", "text-center"],
+                    ["urgence", "Urgence", "text-center"],
+                    ["score", "Score", "text-center"],
+                    ["prix_achat_propose", "Achat propose", "text-right font-bold"],
+                    ["prix_vente_propose", "Vente propose", "text-right font-bold"],
+                    ["marge_pct", "Marge", "text-right"],
+                  ] as [SortKey, string, string][]).map(([key, label, align]) => (
+                    <th key={key} className={`px-2 py-3 ${align} cursor-pointer hover:bg-gray-100 select-none whitespace-nowrap`} onClick={() => toggleSort(key)}>
+                      {label}{sortIcon(key)}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredResults.map((r) => (
                   <tr key={r.code_moteur} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 font-mono font-semibold text-xs">{r.code_moteur}</td>
-                    <td className="px-3 py-2 text-gray-600 text-xs">{r.marque || "\u2014"}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{r.prix_catalogue ? `${r.prix_catalogue} EUR` : "\u2014"}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-gray-500">{r.prix_achat_actuel ? `${r.prix_achat_actuel} EUR` : "\u2014"}</td>
-                    <td className="px-3 py-2 text-center tabular-nums">{r.nb_en_stock}</td>
-                    <td className="px-3 py-2 text-center tabular-nums">{r.nb_vendus}</td>
-                    <td className="px-3 py-2 text-center">
+                    <td className="px-2 py-2 font-mono font-semibold text-xs">{r.code_moteur}</td>
+                    <td className="px-2 py-2 text-gray-600 text-xs">{r.marque || "\u2014"}</td>
+                    <td className="px-2 py-2 text-right tabular-nums text-gray-500">{r.prix_achat_actuel ? `${r.prix_achat_actuel} \u20AC` : "\u2014"}</td>
+                    <td className="px-2 py-2 text-center tabular-nums">{r.nb_en_stock}</td>
+                    <td className="px-2 py-2 text-center tabular-nums">{r.vendus_3m}</td>
+                    <td className="px-2 py-2 text-center tabular-nums">{r.vendus_6m}</td>
+                    <td className="px-2 py-2 text-center tabular-nums">{r.vendus_12m}</td>
+                    <td className="px-2 py-2 text-center tabular-nums">{r.vendus_24m}</td>
+                    <td className="px-2 py-2 text-center">
+                      <span className={`inline-block w-7 h-7 leading-7 rounded-full text-xs font-bold ${
+                        r.urgence >= 8 ? "bg-red-600 text-white" : r.urgence >= 5 ? "bg-amber-500 text-white" : "bg-gray-200 text-gray-600"
+                      }`}>{r.urgence}</span>
+                    </td>
+                    <td className="px-2 py-2 text-center">
                       <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${
-                        r.score >= 70 ? "bg-emerald-100 text-emerald-700"
-                        : r.score >= 40 ? "bg-amber-100 text-amber-700"
-                        : "bg-red-100 text-red-700"
-                      }`}>
-                        {r.score}
-                      </span>
+                        r.score >= 70 ? "bg-emerald-100 text-emerald-700" : r.score >= 40 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+                      }`}>{r.score}</span>
                     </td>
-                    <td className="px-3 py-2 text-right">
+                    <td className="px-2 py-2 text-right">
                       {editingCell?.code === r.code_moteur && editingCell?.field === "prix_achat_propose" ? (
-                        <input
-                          type="number"
-                          autoFocus
-                          className="w-20 border rounded px-1 py-0.5 text-right text-sm"
-                          defaultValue={r.prix_achat_propose}
+                        <input type="number" autoFocus className="w-20 border rounded px-1 py-0.5 text-right text-sm" defaultValue={r.prix_achat_propose}
                           onBlur={(e) => handlePriceEdit(r.code_moteur, "prix_achat_propose", parseInt(e.target.value) || 0)}
-                          onKeyDown={(e) => { if (e.key === "Enter") handlePriceEdit(r.code_moteur, "prix_achat_propose", parseInt((e.target as HTMLInputElement).value) || 0); if (e.key === "Escape") setEditingCell(null); }}
-                        />
+                          onKeyDown={(e) => { if (e.key === "Enter") handlePriceEdit(r.code_moteur, "prix_achat_propose", parseInt((e.target as HTMLInputElement).value) || 0); if (e.key === "Escape") setEditingCell(null); }} />
                       ) : (
-                        <span
-                          className="font-bold text-[#C41E3A] cursor-pointer hover:underline"
-                          onClick={() => { setEditingCell({ code: r.code_moteur, field: "prix_achat_propose" }); setEditValue(String(r.prix_achat_propose)); }}
-                        >
-                          {r.prix_achat_propose} EUR
+                        <span className="font-bold text-[#C41E3A] cursor-pointer hover:underline" onClick={() => setEditingCell({ code: r.code_moteur, field: "prix_achat_propose" })}>
+                          {r.prix_achat_propose} \u20AC
                         </span>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-right">
+                    <td className="px-2 py-2 text-right">
                       {editingCell?.code === r.code_moteur && editingCell?.field === "prix_vente_propose" ? (
-                        <input
-                          type="number"
-                          autoFocus
-                          className="w-20 border rounded px-1 py-0.5 text-right text-sm"
-                          defaultValue={r.prix_vente_propose}
+                        <input type="number" autoFocus className="w-20 border rounded px-1 py-0.5 text-right text-sm" defaultValue={r.prix_vente_propose}
                           onBlur={(e) => handlePriceEdit(r.code_moteur, "prix_vente_propose", parseInt(e.target.value) || 0)}
-                          onKeyDown={(e) => { if (e.key === "Enter") handlePriceEdit(r.code_moteur, "prix_vente_propose", parseInt((e.target as HTMLInputElement).value) || 0); if (e.key === "Escape") setEditingCell(null); }}
-                        />
+                          onKeyDown={(e) => { if (e.key === "Enter") handlePriceEdit(r.code_moteur, "prix_vente_propose", parseInt((e.target as HTMLInputElement).value) || 0); if (e.key === "Escape") setEditingCell(null); }} />
                       ) : (
-                        <span
-                          className="font-bold text-blue-700 cursor-pointer hover:underline"
-                          onClick={() => { setEditingCell({ code: r.code_moteur, field: "prix_vente_propose" }); setEditValue(String(r.prix_vente_propose)); }}
-                        >
-                          {r.prix_vente_propose} EUR
+                        <span className="font-bold text-blue-700 cursor-pointer hover:underline" onClick={() => setEditingCell({ code: r.code_moteur, field: "prix_vente_propose" })}>
+                          {r.prix_vente_propose} \u20AC
                         </span>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums font-semibold text-emerald-600">{r.marge_pct}%</td>
+                    <td className="px-2 py-2 text-right tabular-nums font-semibold text-emerald-600">{r.marge_pct}%</td>
                   </tr>
                 ))}
               </tbody>
