@@ -53,15 +53,14 @@ export default function VentesPage() {
         if (motorIds.length > 0) {
           const { data: motors } = await supabase
             .from("v_moteurs_dispo")
-            .select("n_moteur, code_moteur")
+            .select("n_moteur, nom_type_moteur")
             .in("n_moteur", motorIds);
 
           const codeCount: Record<string, number> = {};
           (motors || []).forEach((m: any) => {
-            const raw = (m.code_moteur || "").trim();
-            // Extract the type prefix: "K9K-732 dém AVT..." -> "K9K"
-            const match = raw.match(/^([A-Za-z0-9]+)/);
-            const code = match ? match[1].toUpperCase() : "";
+            const raw = (m.nom_type_moteur || "").trim();
+            // "K9K-732 dém AVT ppe Siemens" -> "K9K"
+            const code = raw.split(/[\s\-]+/)[0].toUpperCase();
             if (code && code.length >= 2) codeCount[code] = (codeCount[code] || 0) + 1;
           });
           setTopCodes(
