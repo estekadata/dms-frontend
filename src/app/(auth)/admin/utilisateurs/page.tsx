@@ -71,7 +71,7 @@ export default function UtilisateursPage() {
 
   return (
     <div>
-      <PageHeader title="Gestion des utilisateurs" icon="👥" description="Administration des accès et des rôles" />
+      <PageHeader title="Gestion des utilisateurs" description="Administration des accès et des rôles" />
 
       <div className="grid grid-cols-3 gap-4 mb-6">
         <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Total utilisateurs</p><p className="text-2xl font-bold text-brand">{users.length}</p></CardContent></Card>

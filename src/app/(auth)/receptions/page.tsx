@@ -61,7 +61,7 @@ export default function ReceptionsPage() {
 
   return (
     <div>
-      <PageHeader title="Réceptions" icon="📥" description="Gestion des arrivages fournisseurs" />
+      <PageHeader title="Réceptions" description="Gestion des arrivages fournisseurs" />
 
       <div className="grid grid-cols-3 gap-4 mb-6">
         <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Réceptions</p><p className="text-2xl font-bold text-brand">{receptions.length}</p></CardContent></Card>

@@ -110,7 +110,7 @@ export default function AnalysePage() {
 
   return (
     <div>
-      <PageHeader title="Analyse avancée" icon="📊" description="Statistiques détaillées du stock et des ventes" />
+      <PageHeader title="Analyse avancée" description="Statistiques détaillées du stock et des ventes" />
 
       <div className="flex bg-surface-alt rounded-lg border border-border overflow-hidden mb-6 w-fit">
         {(["Stock", "Prix", "Tendances", "Offres"] as Tab[]).map((t) => (

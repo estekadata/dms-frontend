@@ -52,7 +52,7 @@ export default function PiecesPage() {
 
   return (
     <div>
-      <PageHeader title="Pièces détachées" icon="🔩" description="Gestion du stock pièces (alternateurs, démarreurs...)" />
+      <PageHeader title="Pièces détachées" description="Gestion du stock pièces (alternateurs, démarreurs...)" />
 
       <div className="grid grid-cols-3 gap-4 mb-6">
         <Card>

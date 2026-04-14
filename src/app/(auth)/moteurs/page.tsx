@@ -39,7 +39,7 @@ export default function MoteursPage() {
 
   return (
     <div>
-      <PageHeader title="Identification Moteurs" icon="🔍" description="Recherche et consultation du stock moteurs" />
+      <PageHeader title="Identification Moteurs" description="Recherche et consultation du stock moteurs" />
 
       <div className="flex flex-wrap gap-3 mb-6">
         <Input

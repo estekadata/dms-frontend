@@ -66,7 +66,7 @@ export default function HistoriquePage() {
 
   return (
     <div>
-      <PageHeader title="Historique" icon="📜" description="Réceptions, expéditions et statistiques" />
+      <PageHeader title="Historique" description="Réceptions, expéditions et statistiques" />
 
       <div className="flex bg-surface-alt rounded-lg border border-border overflow-hidden mb-6 w-fit">
         {(["Réceptions", "Expéditions", "Stats"] as Tab[]).map((t) => (

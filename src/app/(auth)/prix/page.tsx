@@ -62,7 +62,7 @@ export default function PrixPage() {
 
   return (
     <div>
-      <PageHeader title="Mise à jour des prix" icon="💶" description="Import Excel et mise à jour manuelle des prix d'achat proposés" />
+      <PageHeader title="Mise à jour des prix" description="Import Excel et mise à jour manuelle des prix d'achat proposés" />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <Card>

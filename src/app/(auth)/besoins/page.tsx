@@ -73,7 +73,6 @@ export default function BesoinsPage() {
     <div>
       <PageHeader
         title="Analyse des besoins"
-        icon="🎯"
         description="Besoins et surstock par référence moteur (ventes 3 derniers mois vs stock dispo)"
       />
 

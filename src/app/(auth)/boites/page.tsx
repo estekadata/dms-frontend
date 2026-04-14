@@ -39,7 +39,7 @@ export default function BoitesPage() {
 
   return (
     <div>
-      <PageHeader title="Identification Boîtes de vitesse" icon="⚙️" description="Recherche et consultation du stock BV" />
+      <PageHeader title="Identification Boîtes de vitesse" description="Recherche et consultation du stock BV" />
 
       <div className="flex flex-wrap gap-3 mb-6">
         <Input

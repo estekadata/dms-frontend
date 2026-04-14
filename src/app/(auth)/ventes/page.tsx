@@ -78,7 +78,7 @@ export default function VentesPage() {
 
   return (
     <div>
-      <PageHeader title="Analyse des ventes" icon="📈" description="Tendances et statistiques commerciales" />
+      <PageHeader title="Analyse des ventes" description="Tendances et statistiques commerciales" />
 
       <div className="flex flex-wrap items-center gap-4 mb-6">
         <div className="flex bg-surface-alt rounded-lg border border-border overflow-hidden">
