@@ -50,12 +50,12 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
   }
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-gradient-to-b from-[#C41E3A] to-[#8B1A2B] text-white flex flex-col">
+    <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-surface border-r border-border flex flex-col">
       {/* Header */}
-      <div className="p-6 text-center border-b border-white/10">
-        <h1 className="text-lg font-bold tracking-wide">MULTIREX AUTO</h1>
+      <div className="p-6 text-center border-b border-border">
+        <h1 className="font-heading text-lg font-bold tracking-wide text-foreground">MULTIREX AUTO</h1>
         {userName && (
-          <p className="text-xs mt-1 opacity-80">{userName} ({roleLabel})</p>
+          <p className="text-xs mt-1 text-text-dim">{userName} ({roleLabel})</p>
         )}
       </div>
 
@@ -65,10 +65,10 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
         <Link
           href="/dashboard"
           className={cn(
-            "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all",
+            "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
             pathname === "/dashboard"
-              ? "bg-white/20 shadow-lg"
-              : "hover:bg-white/10"
+              ? "bg-brand-soft text-brand"
+              : "text-text-dim hover:bg-surface-hover hover:text-foreground"
           )}
         >
           <span>🏠</span> Tableau de bord
@@ -76,7 +76,7 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
 
         {navSections.map((section) => (
           <div key={section.title}>
-            <p className="px-4 text-[11px] font-semibold uppercase tracking-wider opacity-60 mb-2">
+            <p className="px-4 text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted mb-2">
               {section.title}
             </p>
             <div className="space-y-1">
@@ -85,10 +85,10 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all",
+                    "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
                     pathname === item.href
-                      ? "bg-white/20 shadow-lg"
-                      : "hover:bg-white/10"
+                      ? "bg-brand-soft text-brand"
+                      : "text-text-dim hover:bg-surface-hover hover:text-foreground"
                   )}
                 >
                   <span>{item.icon}</span> {item.label}
@@ -100,16 +100,16 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
 
         {userRole === "super_admin" && (
           <div>
-            <p className="px-4 text-[11px] font-semibold uppercase tracking-wider opacity-60 mb-2">
+            <p className="px-4 text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted mb-2">
               Administration
             </p>
             <Link
               href="/admin/utilisateurs"
               className={cn(
-                "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all",
+                "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
                 pathname === "/admin/utilisateurs"
-                  ? "bg-white/20 shadow-lg"
-                  : "hover:bg-white/10"
+                  ? "bg-brand-soft text-brand"
+                  : "text-text-dim hover:bg-surface-hover hover:text-foreground"
               )}
             >
               <span>👥</span> Utilisateurs
@@ -119,10 +119,10 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
       </nav>
 
       {/* Logout */}
-      <div className="p-4 border-t border-white/10">
+      <div className="p-4 border-t border-border">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-white/10 hover:bg-white/20 transition-all"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-text-dim bg-surface-alt hover:bg-surface-hover transition-all"
         >
           🚪 Se déconnecter
         </button>
