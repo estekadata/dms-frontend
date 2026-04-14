@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,12 +48,21 @@ export default function LoginPage() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="text-6xl mb-4">🚗</div>
+          <div className="flex justify-center mb-4">
+            <Image
+              src="/logo-multirex.jpg"
+              alt="Multirex Auto"
+              width={160}
+              height={80}
+              className="rounded-[10px]"
+              priority
+            />
+          </div>
           <h1 className="font-heading text-3xl font-bold text-foreground">Multirex Auto DMS</h1>
           <p className="text-text-dim mt-2 text-sm">Systeme de gestion intelligent</p>
         </div>
 
-        <div className="bg-surface border border-border rounded-[14px] p-8 shadow-[0_8px_30px_rgba(0,0,0,0.15)]">
+        <div className="bg-surface border border-border rounded-[14px] p-8 shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
           <h2 className="text-xl font-bold text-foreground mb-1">Connexion</h2>
           <p className="text-sm text-text-dim mb-6">Entrez vos identifiants</p>
 
@@ -82,7 +92,7 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="text-sm p-3 rounded-[10px] bg-[rgba(248,113,113,0.10)] text-[#F87171] border border-[rgba(248,113,113,0.20)]">
+              <div className="text-sm p-3 rounded-[10px] bg-[rgba(220,38,38,0.06)] text-red-600 border border-[rgba(220,38,38,0.12)]">
                 {error}
               </div>
             )}
@@ -107,14 +117,7 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <div className="text-center mt-8">
-          <div className="inline-flex gap-4 bg-surface-alt/50 glass px-6 py-3 rounded-full border border-border">
-            <span className="text-brand text-xs font-semibold">Analytics</span>
-            <span className="text-brand text-xs font-semibold">Temps reel</span>
-            <span className="text-brand text-xs font-semibold">Securise</span>
-          </div>
-          <p className="text-text-muted text-xs mt-4">Multirex Auto 2025</p>
-        </div>
+        <p className="text-text-muted text-xs mt-8 text-center">Multirex Auto 2025</p>
       </div>
     </div>
   );
