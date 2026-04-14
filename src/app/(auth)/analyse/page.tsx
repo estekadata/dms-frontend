@@ -144,7 +144,7 @@ export default function AnalysePage() {
             <h3 className="font-semibold text-foreground mb-4">Répartition par énergie</h3>
             <ResponsiveContainer width="100%" height={260}>
               <PieChart>
-                <Pie data={data.byEnergie} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                <Pie data={data.byEnergie} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
                   {data.byEnergie.map((_: any, i: number) => (
                     <Cell key={i} fill={COLORS[i % COLORS.length]} />
                   ))}
