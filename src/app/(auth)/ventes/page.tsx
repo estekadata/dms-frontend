@@ -58,7 +58,8 @@ export default function VentesPage() {
 
           const codeCount: Record<string, number> = {};
           (motors || []).forEach((m: any) => {
-            const code = (m.code_moteur || "").substring(0, 3).toUpperCase();
+            const raw = (m.code_moteur || "").trim();
+            const code = raw.split(/[\s\-]+/)[0].toUpperCase();
             if (code) codeCount[code] = (codeCount[code] || 0) + 1;
           });
           setTopCodes(
