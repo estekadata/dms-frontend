@@ -155,8 +155,8 @@ export default function HistoriquePage() {
                     <Badge
                       className={
                         s.recus - s.vendus >= 0
-                          ? "bg-[rgba(96,165,250,0.10)] text-blue-400 border border-[rgba(96,165,250,0.20)] hover:bg-[rgba(96,165,250,0.15)]"
-                          : "bg-[rgba(248,113,113,0.10)] text-red-400 border border-[rgba(248,113,113,0.20)] hover:bg-[rgba(248,113,113,0.15)]"
+                          ? "bg-[rgba(96,165,250,0.10)] text-blue-600 border border-[rgba(96,165,250,0.20)] hover:bg-[rgba(96,165,250,0.15)]"
+                          : "bg-[rgba(248,113,113,0.10)] text-red-600 border border-[rgba(248,113,113,0.20)] hover:bg-[rgba(248,113,113,0.15)]"
                       }
                     >
                       {s.recus - s.vendus >= 0 ? "+" : ""}{s.recus - s.vendus}

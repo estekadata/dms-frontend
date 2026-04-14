@@ -83,7 +83,7 @@ export default function PrixPage() {
                 />
               </div>
               {message && (
-                <div className={`text-sm px-3 py-2 rounded-[10px] ${status === "error" ? "bg-[rgba(248,113,113,0.10)] text-red-400" : status === "done" ? "bg-[rgba(52,211,153,0.10)] text-emerald-400" : "bg-[rgba(96,165,250,0.10)] text-blue-400"}`}>
+                <div className={`text-sm px-3 py-2 rounded-[10px] ${status === "error" ? "bg-[rgba(248,113,113,0.10)] text-red-600" : status === "done" ? "bg-[rgba(52,211,153,0.10)] text-emerald-400" : "bg-[rgba(96,165,250,0.10)] text-blue-600"}`}>
                   {message}
                 </div>
               )}
@@ -140,7 +140,7 @@ export default function PrixPage() {
 
       <Card className="border-[rgba(96,165,250,0.20)] bg-[rgba(96,165,250,0.05)]">
         <CardContent className="p-5">
-          <h4 className="font-semibold text-blue-400 mb-2">Format attendu pour l&apos;import Excel</h4>
+          <h4 className="font-semibold text-blue-600 mb-2">Format attendu pour l&apos;import Excel</h4>
           <div className="bg-surface border border-border rounded-[10px] overflow-hidden mt-3">
             <table className="text-sm w-full">
               <thead className="bg-surface-alt text-text-dim text-xs uppercase">

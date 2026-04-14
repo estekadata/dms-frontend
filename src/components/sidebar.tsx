@@ -3,32 +3,37 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import {
+  LayoutDashboard, TrendingUp, Target, BarChart3, Euro,
+  PackageOpen, Search, Cog, ClipboardList, History,
+  Wrench, Building2, Users, LogOut,
+} from "lucide-react";
 
 const navSections = [
   {
     title: "Commercial",
     items: [
-      { label: "Ventes", href: "/ventes", icon: "📈" },
-      { label: "Besoins", href: "/besoins", icon: "🎯" },
-      { label: "Analyse", href: "/analyse", icon: "📊" },
-      { label: "Mise à jour prix", href: "/prix", icon: "💶" },
+      { label: "Ventes", href: "/ventes", icon: TrendingUp },
+      { label: "Besoins", href: "/besoins", icon: Target },
+      { label: "Analyse", href: "/analyse", icon: BarChart3 },
+      { label: "Mise à jour prix", href: "/prix", icon: Euro },
     ],
   },
   {
     title: "Gestion interne",
     items: [
-      { label: "Réceptions", href: "/receptions", icon: "📥" },
-      { label: "Moteurs", href: "/moteurs", icon: "🔍" },
-      { label: "Boîtes", href: "/boites", icon: "⚙️" },
-      { label: "Réservations", href: "/reservations", icon: "📋" },
-      { label: "Historique", href: "/historique", icon: "📜" },
+      { label: "Réceptions", href: "/receptions", icon: PackageOpen },
+      { label: "Moteurs", href: "/moteurs", icon: Search },
+      { label: "Boîtes", href: "/boites", icon: Cog },
+      { label: "Réservations", href: "/reservations", icon: ClipboardList },
+      { label: "Historique", href: "/historique", icon: History },
     ],
   },
   {
     title: "Outils",
     items: [
-      { label: "Pièces détachées", href: "/pieces", icon: "🔩" },
-      { label: "Centres VHU", href: "/vhu", icon: "🛠️" },
+      { label: "Pièces détachées", href: "/pieces", icon: Wrench },
+      { label: "Centres VHU", href: "/vhu", icon: Building2 },
     ],
   },
 ];
@@ -71,7 +76,7 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
               : "text-text-dim hover:bg-surface-hover hover:text-foreground"
           )}
         >
-          <span>🏠</span> Tableau de bord
+          <LayoutDashboard size={18} /> Tableau de bord
         </Link>
 
         {navSections.map((section) => (
@@ -91,7 +96,7 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
                       : "text-text-dim hover:bg-surface-hover hover:text-foreground"
                   )}
                 >
-                  <span>{item.icon}</span> {item.label}
+                  <item.icon size={18} /> {item.label}
                 </Link>
               ))}
             </div>
@@ -112,7 +117,7 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
                   : "text-text-dim hover:bg-surface-hover hover:text-foreground"
               )}
             >
-              <span>👥</span> Utilisateurs
+              <Users size={18} /> Utilisateurs
             </Link>
           </div>
         )}
@@ -124,7 +129,7 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
           onClick={handleLogout}
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-text-dim bg-surface-alt hover:bg-surface-hover transition-all"
         >
-          🚪 Se déconnecter
+          <LogOut size={16} /> Se déconnecter
         </button>
       </div>
     </aside>

@@ -106,7 +106,7 @@ export default function ReceptionsPage() {
                       <td className="px-4 py-3 text-center text-text-dim">{r.nb_moteurs ?? "—"}</td>
                       <td className="px-4 py-3 text-right tabular-nums text-text-dim">{r.montant_total ? `${Math.round(r.montant_total).toLocaleString("fr-FR")} €` : "—"}</td>
                       <td className="px-4 py-3 text-center">
-                        <Badge className="bg-[rgba(52,211,153,0.10)] text-emerald-400 border border-[rgba(52,211,153,0.20)] hover:bg-[rgba(52,211,153,0.15)]">{r.statut || "Reçu"}</Badge>
+                        <Badge className="bg-[rgba(52,211,153,0.10)] text-emerald-600 border border-[rgba(52,211,153,0.20)] hover:bg-[rgba(52,211,153,0.15)]">{r.statut || "Reçu"}</Badge>
                       </td>
                     </tr>
                   ))}

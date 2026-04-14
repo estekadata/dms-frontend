@@ -1,10 +1,10 @@
 import { type KpiMeta } from "@/lib/types";
 
 const colorMap: Record<string, string> = {
-  emerald: "text-emerald-400",
-  amber: "text-amber-400",
-  red: "text-red-400",
-  blue: "text-blue-400",
+  emerald: "text-emerald-600",
+  amber: "text-amber-600",
+  red: "text-red-600",
+  blue: "text-blue-600",
 };
 
 function formatValue(value: number, fmt: KpiMeta["fmt"]): string {

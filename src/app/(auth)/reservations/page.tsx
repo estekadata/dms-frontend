@@ -118,7 +118,7 @@ export default function ReservationsPage() {
                         className={
                           r.statut === "Annulée"
                             ? "bg-[rgba(90,100,120,0.10)] text-text-muted border border-[rgba(90,100,120,0.20)] hover:bg-[rgba(90,100,120,0.15)]"
-                            : "bg-[rgba(251,191,36,0.10)] text-amber-400 border border-[rgba(251,191,36,0.20)] hover:bg-[rgba(251,191,36,0.15)]"
+                            : "bg-[rgba(251,191,36,0.10)] text-amber-600 border border-[rgba(251,191,36,0.20)] hover:bg-[rgba(251,191,36,0.15)]"
                         }
                       >
                         {r.statut || "Active"}
@@ -129,7 +129,7 @@ export default function ReservationsPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="text-red-400 border-[rgba(248,113,113,0.20)] hover:bg-[rgba(248,113,113,0.10)] text-xs"
+                          className="text-red-600 border-[rgba(248,113,113,0.20)] hover:bg-[rgba(248,113,113,0.10)] text-xs"
                           onClick={() => cancelReservation(r.n_reservation)}
                         >
                           Annuler

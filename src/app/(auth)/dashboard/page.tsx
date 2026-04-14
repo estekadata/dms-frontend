@@ -6,24 +6,29 @@ import { KpiCard } from "@/components/kpi-card";
 import { KPI_CATALOG, DEFAULT_KPIS, type DashboardKpis } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getDashboardKpis } from "@/lib/queries/dashboard";
+import {
+  TrendingUp, Target, BarChart3, Euro,
+  PackageOpen, Search, Cog, ClipboardList,
+  History, Wrench, Building2,
+} from "lucide-react";
 
 const navGrid = [
   { title: "Commercial", items: [
-    { label: "Ventes", desc: "Analyse des ventes", href: "/ventes", icon: "📈" },
-    { label: "Besoins", desc: "Besoins centres VHU", href: "/besoins", icon: "🎯" },
-    { label: "Analyse", desc: "Statistiques", href: "/analyse", icon: "📊" },
-    { label: "Mise a jour prix", desc: "Propositions achat", href: "/prix", icon: "💶" },
+    { label: "Ventes", desc: "Analyse des ventes", href: "/ventes", icon: TrendingUp },
+    { label: "Besoins", desc: "Besoins centres VHU", href: "/besoins", icon: Target },
+    { label: "Analyse", desc: "Statistiques", href: "/analyse", icon: BarChart3 },
+    { label: "Mise a jour prix", desc: "Propositions achat", href: "/prix", icon: Euro },
   ]},
   { title: "Gestion interne", items: [
-    { label: "Receptions", desc: "Gestion des arrivages", href: "/receptions", icon: "📥" },
-    { label: "Moteurs", desc: "Identification moteurs", href: "/moteurs", icon: "🔍" },
-    { label: "Boites", desc: "Identification BV", href: "/boites", icon: "⚙️" },
-    { label: "Reservations", desc: "Reservations clients", href: "/reservations", icon: "📋" },
+    { label: "Receptions", desc: "Gestion des arrivages", href: "/receptions", icon: PackageOpen },
+    { label: "Moteurs", desc: "Identification moteurs", href: "/moteurs", icon: Search },
+    { label: "Boites", desc: "Identification BV", href: "/boites", icon: Cog },
+    { label: "Reservations", desc: "Reservations clients", href: "/reservations", icon: ClipboardList },
   ]},
   { title: "Outils", items: [
-    { label: "Historique", desc: "Receptions & expeditions", href: "/historique", icon: "📜" },
-    { label: "Pieces Detachees", desc: "Stock alternateurs...", href: "/pieces", icon: "🔩" },
-    { label: "Centres VHU", desc: "Interface centres VHU", href: "/vhu", icon: "🛠️" },
+    { label: "Historique", desc: "Receptions & expeditions", href: "/historique", icon: History },
+    { label: "Pieces Detachees", desc: "Stock alternateurs...", href: "/pieces", icon: Wrench },
+    { label: "Centres VHU", desc: "Interface centres VHU", href: "/vhu", icon: Building2 },
   ]},
 ];
 
@@ -56,10 +61,10 @@ export default function DashboardPage() {
       {kpis && (
         <div className="bg-surface border border-border rounded-[14px] px-5 py-3 mb-8 flex gap-6 text-sm text-text-dim">
           <span>Tendance vs mois precedent :</span>
-          <span className={kpis.ventes_mois - kpis.ventes_mois_prec >= 0 ? "text-emerald-400 font-semibold" : "text-red-400 font-semibold"}>
+          <span className={kpis.ventes_mois - kpis.ventes_mois_prec >= 0 ? "text-emerald-600 font-semibold" : "text-red-600 font-semibold"}>
             {kpis.ventes_mois - kpis.ventes_mois_prec >= 0 ? "+" : ""}{kpis.ventes_mois - kpis.ventes_mois_prec} ventes
           </span>
-          <span className={kpis.ca_mois - kpis.ca_mois_prec >= 0 ? "text-emerald-400 font-semibold" : "text-red-400 font-semibold"}>
+          <span className={kpis.ca_mois - kpis.ca_mois_prec >= 0 ? "text-emerald-600 font-semibold" : "text-red-600 font-semibold"}>
             {kpis.ca_mois - kpis.ca_mois_prec >= 0 ? "+" : ""}{Math.round(kpis.ca_mois - kpis.ca_mois_prec).toLocaleString("fr-FR")} EUR CA
           </span>
         </div>
@@ -76,7 +81,9 @@ export default function DashboardPage() {
                 href={item.href}
                 className="bg-surface border border-border rounded-[14px] p-5 hover:bg-surface-hover hover:-translate-y-0.5 transition-all group"
               >
-                <div className="text-3xl mb-3 group-hover:scale-110 transition-transform">{item.icon}</div>
+                <div className="mb-3 text-brand group-hover:scale-110 transition-transform">
+                  <item.icon size={28} strokeWidth={1.8} />
+                </div>
                 <h3 className="font-semibold text-foreground">{item.label}</h3>
                 <p className="text-xs text-text-dim mt-1">{item.desc}</p>
               </Link>

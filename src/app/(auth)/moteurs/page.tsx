@@ -62,8 +62,8 @@ export default function MoteursPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Résultats</p><p className="text-2xl font-bold text-brand">{moteurs.length}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Disponibles</p><p className="text-2xl font-bold text-emerald-400">{nbDispo}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Réservés</p><p className="text-2xl font-bold text-amber-400">{nbReserve}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Disponibles</p><p className="text-2xl font-bold text-emerald-600">{nbDispo}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Réservés</p><p className="text-2xl font-bold text-amber-600">{nbReserve}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Archivés</p><p className="text-2xl font-bold text-text-muted">{nbArchive}</p></CardContent></Card>
       </div>
 
@@ -99,9 +99,9 @@ export default function MoteursPage() {
                       {m.archiver ? (
                         <Badge className="bg-[rgba(90,100,120,0.10)] text-text-muted border border-[rgba(90,100,120,0.20)] hover:bg-[rgba(90,100,120,0.15)]">Archivé</Badge>
                       ) : m.est_disponible === 1 ? (
-                        <Badge className="bg-[rgba(52,211,153,0.10)] text-emerald-400 border border-[rgba(52,211,153,0.20)] hover:bg-[rgba(52,211,153,0.15)]">Disponible</Badge>
+                        <Badge className="bg-[rgba(52,211,153,0.10)] text-emerald-600 border border-[rgba(52,211,153,0.20)] hover:bg-[rgba(52,211,153,0.15)]">Disponible</Badge>
                       ) : (
-                        <Badge className="bg-[rgba(251,191,36,0.10)] text-amber-400 border border-[rgba(251,191,36,0.20)] hover:bg-[rgba(251,191,36,0.15)]">Réservé</Badge>
+                        <Badge className="bg-[rgba(251,191,36,0.10)] text-amber-600 border border-[rgba(251,191,36,0.20)] hover:bg-[rgba(251,191,36,0.15)]">Réservé</Badge>
                       )}
                     </td>
                   </tr>

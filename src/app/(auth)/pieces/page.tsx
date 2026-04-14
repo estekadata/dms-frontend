@@ -64,7 +64,7 @@ export default function PiecesPage() {
         <Card>
           <CardContent className="p-4">
             <p className="text-xs text-text-dim font-semibold uppercase">Alertes stock</p>
-            <p className="text-2xl font-bold text-amber-400">{nbAlertes}</p>
+            <p className="text-2xl font-bold text-amber-600">{nbAlertes}</p>
           </CardContent>
         </Card>
         <Card>
@@ -89,7 +89,7 @@ export default function PiecesPage() {
             onChange={(e) => setAlerte(e.target.checked)}
             className="rounded border-border bg-surface-alt"
           />
-          <span className="text-sm text-amber-400 font-medium">Alertes seulement</span>
+          <span className="text-sm text-amber-600 font-medium">Alertes seulement</span>
         </label>
       </div>
 
@@ -127,7 +127,7 @@ export default function PiecesPage() {
                       <td className="px-4 py-3 text-text-dim text-xs">{p.emplacement || "—"}</td>
                       <td className="px-4 py-3 text-center">
                         {isAlerte && (
-                          <Badge className="bg-[rgba(251,191,36,0.10)] text-amber-400 border border-[rgba(251,191,36,0.20)] hover:bg-[rgba(251,191,36,0.15)]">Stock bas</Badge>
+                          <Badge className="bg-[rgba(251,191,36,0.10)] text-amber-600 border border-[rgba(251,191,36,0.20)] hover:bg-[rgba(251,191,36,0.15)]">Stock bas</Badge>
                         )}
                       </td>
                     </tr>

@@ -127,10 +127,10 @@ export default function VentesPage() {
             </h3>
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={ventesParMois}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#232B3E" />
-                <XAxis dataKey="mois" tick={{ fontSize: 12, fill: "#8892A8" }} />
-                <YAxis tick={{ fontSize: 12, fill: "#8892A8" }} />
-                <Tooltip contentStyle={{ background: "#12161F", border: "1px solid #232B3E", borderRadius: 10, color: "#E2E8F0" }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                <XAxis dataKey="mois" tick={{ fontSize: 12, fill: "#4B5563" }} />
+                <YAxis tick={{ fontSize: 12, fill: "#4B5563" }} />
+                <Tooltip contentStyle={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: 10, color: "#111827", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} />
                 <Line
                   type="monotone"
                   dataKey="nb_vendus"
@@ -148,10 +148,10 @@ export default function VentesPage() {
               <h3 className="font-semibold text-foreground mb-4">Top 15 types moteur vendus</h3>
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={topCodes}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#232B3E" />
-                  <XAxis dataKey="type_moteur" tick={{ fontSize: 11, fill: "#8892A8" }} />
-                  <YAxis tick={{ fontSize: 12, fill: "#8892A8" }} />
-                  <Tooltip contentStyle={{ background: "#12161F", border: "1px solid #232B3E", borderRadius: 10, color: "#E2E8F0" }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis dataKey="type_moteur" tick={{ fontSize: 11, fill: "#4B5563" }} />
+                  <YAxis tick={{ fontSize: 12, fill: "#4B5563" }} />
+                  <Tooltip contentStyle={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: 10, color: "#111827", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} />
                   <Bar dataKey="nb_vendus" fill="#C41E3A" radius={[6, 6, 0, 0]} name="Ventes" />
                 </BarChart>
               </ResponsiveContainer>

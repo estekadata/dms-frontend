@@ -81,13 +81,13 @@ export default function BesoinsPage() {
         <Card>
           <CardContent className="p-4">
             <p className="text-xs text-text-dim font-semibold uppercase">En manque</p>
-            <p className="text-2xl font-bold text-red-400">{nbManque}</p>
+            <p className="text-2xl font-bold text-red-600">{nbManque}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <p className="text-xs text-text-dim font-semibold uppercase">En surstock</p>
-            <p className="text-2xl font-bold text-blue-400">{nbSurstock}</p>
+            <p className="text-2xl font-bold text-blue-600">{nbSurstock}</p>
           </CardContent>
         </Card>
         <Card>
@@ -153,9 +153,9 @@ export default function BesoinsPage() {
                       <Badge
                         className={
                           b.delta < 0
-                            ? "bg-[rgba(248,113,113,0.10)] text-red-400 border border-[rgba(248,113,113,0.20)] hover:bg-[rgba(248,113,113,0.15)]"
+                            ? "bg-[rgba(248,113,113,0.10)] text-red-600 border border-[rgba(248,113,113,0.20)] hover:bg-[rgba(248,113,113,0.15)]"
                             : b.delta > 2
-                            ? "bg-[rgba(96,165,250,0.10)] text-blue-400 border border-[rgba(96,165,250,0.20)] hover:bg-[rgba(96,165,250,0.15)]"
+                            ? "bg-[rgba(96,165,250,0.10)] text-blue-600 border border-[rgba(96,165,250,0.20)] hover:bg-[rgba(96,165,250,0.15)]"
                             : "bg-[rgba(90,100,120,0.10)] text-text-muted border border-[rgba(90,100,120,0.20)] hover:bg-[rgba(90,100,120,0.15)]"
                         }
                       >

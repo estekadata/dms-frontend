@@ -12,7 +12,7 @@ type Tab = "Stock" | "Prix" | "Tendances" | "Offres";
 
 const COLORS = ["#C41E3A", "#F87171", "#FBBF24", "#34D399", "#60A5FA", "#A78BFA", "#FB923C", "#F472B6"];
 
-const tooltipStyle = { background: "#12161F", border: "1px solid #232B3E", borderRadius: 10, color: "#E2E8F0" };
+const tooltipStyle = { background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: 10, color: "#111827", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" };
 
 export default function AnalysePage() {
   const [tab, setTab] = useState<Tab>("Stock");
@@ -132,9 +132,9 @@ export default function AnalysePage() {
             <h3 className="font-semibold text-foreground mb-4">Stock disponible par marque (Top 10)</h3>
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={data.topMarques} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#232B3E" />
-                <XAxis type="number" tick={{ fontSize: 11, fill: "#8892A8" }} />
-                <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 11, fill: "#8892A8" }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                <XAxis type="number" tick={{ fontSize: 11, fill: "#4B5563" }} />
+                <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 11, fill: "#4B5563" }} />
                 <Tooltip contentStyle={tooltipStyle} />
                 <Bar dataKey="value" fill="#C41E3A" radius={[0, 4, 4, 0]} name="Disponibles" />
               </BarChart>
@@ -160,9 +160,9 @@ export default function AnalysePage() {
             <h3 className="font-semibold text-foreground mb-4">Distribution des prix d&apos;achat</h3>
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={data.ranges}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#232B3E" />
-                <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#8892A8" }} />
-                <YAxis tick={{ fontSize: 12, fill: "#8892A8" }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#4B5563" }} />
+                <YAxis tick={{ fontSize: 12, fill: "#4B5563" }} />
                 <Tooltip contentStyle={tooltipStyle} />
                 <Bar dataKey="count" fill="#C41E3A" radius={[6, 6, 0, 0]} name="Nb moteurs" />
               </BarChart>
@@ -178,11 +178,11 @@ export default function AnalysePage() {
           <h3 className="font-semibold text-foreground mb-4">Réceptions vs Ventes — 12 derniers mois</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={data.months}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#232B3E" />
-              <XAxis dataKey="mois" tick={{ fontSize: 11, fill: "#8892A8" }} />
-              <YAxis tick={{ fontSize: 12, fill: "#8892A8" }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+              <XAxis dataKey="mois" tick={{ fontSize: 11, fill: "#4B5563" }} />
+              <YAxis tick={{ fontSize: 12, fill: "#4B5563" }} />
               <Tooltip contentStyle={tooltipStyle} />
-              <Legend wrapperStyle={{ color: "#8892A8" }} />
+              <Legend wrapperStyle={{ color: "#4B5563" }} />
               <Bar dataKey="recus" fill="#60A5FA" radius={[4, 4, 0, 0]} name="Reçus" />
               <Bar dataKey="vendus" fill="#C41E3A" radius={[4, 4, 0, 0]} name="Vendus" />
             </BarChart>
@@ -193,11 +193,11 @@ export default function AnalysePage() {
           <h3 className="font-semibold text-foreground mb-4">Top 15 références les plus vendues</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={data.topOffres}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#232B3E" />
-              <XAxis dataKey="code" tick={{ fontSize: 11, fill: "#8892A8" }} />
-              <YAxis tick={{ fontSize: 12, fill: "#8892A8" }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+              <XAxis dataKey="code" tick={{ fontSize: 11, fill: "#4B5563" }} />
+              <YAxis tick={{ fontSize: 12, fill: "#4B5563" }} />
               <Tooltip contentStyle={tooltipStyle} formatter={(value, name) => [name === "ca" ? `${Number(value).toLocaleString("fr-FR")} €` : value, name === "ca" ? "CA" : "Ventes"]} />
-              <Legend wrapperStyle={{ color: "#8892A8" }} />
+              <Legend wrapperStyle={{ color: "#4B5563" }} />
               <Bar dataKey="ventes" fill="#C41E3A" radius={[4, 4, 0, 0]} name="Ventes" />
             </BarChart>
           </ResponsiveContainer>

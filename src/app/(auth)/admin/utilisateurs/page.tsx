@@ -75,8 +75,8 @@ export default function UtilisateursPage() {
 
       <div className="grid grid-cols-3 gap-4 mb-6">
         <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Total utilisateurs</p><p className="text-2xl font-bold text-brand">{users.length}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Actifs</p><p className="text-2xl font-bold text-emerald-400">{users.filter((u) => u.actif !== false).length}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Admins</p><p className="text-2xl font-bold text-purple-400">{users.filter((u) => u.role === "administrateur").length}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Actifs</p><p className="text-2xl font-bold text-emerald-600">{users.filter((u) => u.actif !== false).length}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Admins</p><p className="text-2xl font-bold text-purple-600">{users.filter((u) => u.role === "administrateur").length}</p></CardContent></Card>
       </div>
 
       <div className="flex justify-between items-center mb-5">
@@ -148,7 +148,7 @@ export default function UtilisateursPage() {
                     <Badge
                       className={
                         u.role === "administrateur"
-                          ? "bg-[rgba(167,139,250,0.10)] text-purple-400 border border-[rgba(167,139,250,0.20)] hover:bg-[rgba(167,139,250,0.15)]"
+                          ? "bg-[rgba(167,139,250,0.10)] text-purple-600 border border-[rgba(167,139,250,0.20)] hover:bg-[rgba(167,139,250,0.15)]"
                           : u.role === "commercial"
                           ? "bg-[rgba(96,165,250,0.10)] text-blue-400 border border-[rgba(96,165,250,0.20)] hover:bg-[rgba(96,165,250,0.15)]"
                           : "bg-[rgba(90,100,120,0.10)] text-text-dim border border-[rgba(90,100,120,0.20)] hover:bg-[rgba(90,100,120,0.15)]"
@@ -163,7 +163,7 @@ export default function UtilisateursPage() {
                     <Badge
                       className={
                         u.actif !== false
-                          ? "bg-[rgba(52,211,153,0.10)] text-emerald-400 border border-[rgba(52,211,153,0.20)] hover:bg-[rgba(52,211,153,0.15)]"
+                          ? "bg-[rgba(52,211,153,0.10)] text-emerald-600 border border-[rgba(52,211,153,0.20)] hover:bg-[rgba(52,211,153,0.15)]"
                           : "bg-[rgba(90,100,120,0.10)] text-text-muted border border-[rgba(90,100,120,0.20)] hover:bg-[rgba(90,100,120,0.15)]"
                       }
                     >
