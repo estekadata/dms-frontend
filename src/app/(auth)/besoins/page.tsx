@@ -23,9 +23,18 @@ type Besoin = {
 const TABS = ["En manque", "En surstock", "Tout voir"] as const;
 type Tab = (typeof TABS)[number];
 
+const PERIODS = [
+  { label: "1 mois", value: 1 },
+  { label: "3 mois", value: 3 },
+  { label: "6 mois", value: 6 },
+  { label: "12 mois", value: 12 },
+  { label: "24 mois", value: 24 },
+];
+
 export default function BesoinsPage() {
   const [tab, setTab] = useState<Tab>("En manque");
   const [search, setSearch] = useState("");
+  const [months, setMonths] = useState(3);
   const [besoins, setBesoins] = useState<Besoin[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,6 +43,7 @@ export default function BesoinsPage() {
       setLoading(true);
       const { data, error } = await supabase.rpc("get_besoins_moteurs", {
         p_limit: 500,
+        p_months: months,
       });
 
       if (!error && data) {
@@ -50,7 +60,7 @@ export default function BesoinsPage() {
       setLoading(false);
     }
     load();
-  }, []);
+  }, [months]);
 
   const filtered = besoins
     .filter((b) => {
@@ -73,26 +83,46 @@ export default function BesoinsPage() {
     <div>
       <PageHeader
         title="Analyse des besoins"
-        description="Besoins et surstock par référence moteur (ventes 3 derniers mois vs stock dispo)"
+        description={`Besoins et surstock par référence moteur (ventes ${months} derniers mois vs stock dispo)`}
       />
+
+      {/* Period selector */}
+      <div className="flex items-center gap-2 mb-6">
+        <span className="text-sm text-text-dim">Période :</span>
+        <div className="flex bg-surface-alt rounded-lg border border-border overflow-hidden">
+          {PERIODS.map((p) => (
+            <button
+              key={p.value}
+              onClick={() => setMonths(p.value)}
+              className={`px-3 py-1.5 text-xs font-medium transition-all ${
+                months === p.value
+                  ? "bg-brand text-white"
+                  : "text-text-dim hover:bg-surface-hover"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="grid grid-cols-3 gap-4 mb-6">
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-text-dim font-semibold uppercase">En manque</p>
-            <p className="text-2xl font-bold text-red-600">{nbManque}</p>
+            <p className="text-xs text-text-muted font-semibold uppercase">En manque</p>
+            <p className="text-2xl font-semibold text-red-600">{nbManque}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-text-dim font-semibold uppercase">En surstock</p>
-            <p className="text-2xl font-bold text-blue-600">{nbSurstock}</p>
+            <p className="text-xs text-text-muted font-semibold uppercase">En surstock</p>
+            <p className="text-2xl font-semibold text-blue-600">{nbSurstock}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-text-dim font-semibold uppercase">Total références</p>
-            <p className="text-2xl font-bold text-foreground">{besoins.length}</p>
+            <p className="text-xs text-text-muted font-semibold uppercase">Total références</p>
+            <p className="text-2xl font-semibold text-foreground">{besoins.length}</p>
           </CardContent>
         </Card>
       </div>
@@ -133,7 +163,7 @@ export default function BesoinsPage() {
                   <th className="px-4 py-3 text-left">Type</th>
                   <th className="px-4 py-3 text-left">Marque</th>
                   <th className="px-4 py-3 text-left">Énergie</th>
-                  <th className="px-4 py-3 text-center">Vendus (3 mois)</th>
+                  <th className="px-4 py-3 text-center">Vendus ({months} mois)</th>
                   <th className="px-4 py-3 text-center">Stock dispo</th>
                   <th className="px-4 py-3 text-center">Delta</th>
                   <th className="px-4 py-3 text-right">Prix moy. achat</th>
@@ -152,10 +182,10 @@ export default function BesoinsPage() {
                       <Badge
                         className={
                           b.delta < 0
-                            ? "bg-[rgba(248,113,113,0.10)] text-red-600 border border-[rgba(248,113,113,0.20)] hover:bg-[rgba(248,113,113,0.15)]"
+                            ? "bg-[rgba(220,38,38,0.06)] text-red-600 border border-[rgba(220,38,38,0.12)] hover:bg-[rgba(220,38,38,0.10)]"
                             : b.delta > 2
-                            ? "bg-[rgba(96,165,250,0.10)] text-blue-600 border border-[rgba(96,165,250,0.20)] hover:bg-[rgba(96,165,250,0.15)]"
-                            : "bg-[rgba(90,100,120,0.10)] text-text-muted border border-[rgba(90,100,120,0.20)] hover:bg-[rgba(90,100,120,0.15)]"
+                            ? "bg-[rgba(59,130,246,0.06)] text-blue-600 border border-[rgba(59,130,246,0.12)] hover:bg-[rgba(59,130,246,0.10)]"
+                            : "bg-[rgba(107,114,128,0.06)] text-text-muted border border-[rgba(107,114,128,0.12)] hover:bg-[rgba(107,114,128,0.10)]"
                         }
                       >
                         {b.delta > 0 ? `+${b.delta}` : b.delta}
