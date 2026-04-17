@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,13 +48,12 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <Image
+            <img
               src="/logo-multirex.jpg"
               alt="Multirex Auto"
               width={160}
               height={80}
               className="rounded-[10px]"
-              priority
             />
           </div>
           <h1 className="font-heading text-3xl font-bold text-foreground">Multirex Auto DMS</h1>
