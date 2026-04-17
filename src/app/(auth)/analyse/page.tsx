@@ -23,15 +23,16 @@ export default function AnalysePage() {
     async function load() {
       setLoading(true);
       if (tab === "Stock") {
+        // Filtrer directement côté DB pour ne récupérer que les dispos
         const { data: moteurs } = await supabase
           .from("v_moteurs_dispo")
-          .select("marque, energie, est_disponible")
-          .limit(2000);
+          .select("marque, energie")
+          .eq("est_disponible", 1)
+          .limit(10000);
 
         const byMarque: Record<string, number> = {};
         const byEnergie: Record<string, number> = {};
         (moteurs || []).forEach((m: any) => {
-          if (m.est_disponible !== 1) return;
           const marque = m.marque || "Inconnu";
           const energie = m.energie || "Inconnu";
           byMarque[marque] = (byMarque[marque] || 0) + 1;
@@ -45,8 +46,9 @@ export default function AnalysePage() {
         const { data: moteurs } = await supabase
           .from("v_moteurs_dispo")
           .select("code_moteur, prix_achat_moteur")
+          .eq("est_disponible", 1)
           .not("prix_achat_moteur", "is", null)
-          .limit(2000);
+          .limit(10000);
 
         const ranges = [
           { label: "0–200€", min: 0, max: 200, count: 0 },
