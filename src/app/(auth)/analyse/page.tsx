@@ -22,6 +22,7 @@ export default function AnalysePage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
+      setData(null); // Reset pour éviter de réutiliser les données du tab précédent
       if (tab === "Stock") {
         // Filtrer directement côté DB pour ne récupérer que les dispos
         const { data: moteurs } = await supabase
