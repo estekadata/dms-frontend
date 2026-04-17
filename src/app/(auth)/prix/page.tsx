@@ -6,13 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-
-type PrixRow = { code_moteur: string; prix_achat_actuel: number; prix_propose: number; delta_pct: number; };
 
 export default function PrixPage() {
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<PrixRow[]>([]);
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [message, setMessage] = useState("");
   const [manualCode, setManualCode] = useState("");
@@ -22,7 +18,6 @@ export default function PrixPage() {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] || null;
     setFile(f);
-    setPreview([]);
     setStatus("idle");
     if (f) {
       setMessage(`Fichier sélectionné : ${f.name} (${(f.size / 1024).toFixed(1)} Ko)`);
@@ -83,7 +78,7 @@ export default function PrixPage() {
                 />
               </div>
               {message && (
-                <div className={`text-sm px-3 py-2 rounded-[10px] ${status === "error" ? "bg-[rgba(248,113,113,0.10)] text-red-600" : status === "done" ? "bg-[rgba(52,211,153,0.10)] text-emerald-400" : "bg-[rgba(96,165,250,0.10)] text-blue-600"}`}>
+                <div className={`text-sm px-3 py-2 rounded-[10px] ${status === "error" ? "bg-[rgba(248,113,113,0.10)] text-red-600" : status === "done" ? "bg-[rgba(52,211,153,0.10)] text-emerald-600" : "bg-[rgba(96,165,250,0.10)] text-blue-600"}`}>
                   {message}
                 </div>
               )}
