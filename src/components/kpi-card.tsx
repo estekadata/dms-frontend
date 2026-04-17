@@ -1,9 +1,10 @@
 import { type KpiMeta } from "@/lib/types";
 
-function formatValue(value: number, fmt: KpiMeta["fmt"]): string {
-  if (fmt === "money") return new Intl.NumberFormat("fr-FR").format(Math.round(value)) + " €";
-  if (fmt === "pct") return value.toFixed(1) + "%";
-  return new Intl.NumberFormat("fr-FR").format(Math.round(value));
+function formatValue(value: number | null | undefined, fmt: KpiMeta["fmt"]): string {
+  const v = typeof value === "number" && !isNaN(value) ? value : 0;
+  if (fmt === "money") return new Intl.NumberFormat("fr-FR").format(Math.round(v)) + " €";
+  if (fmt === "pct") return v.toFixed(1) + "%";
+  return new Intl.NumberFormat("fr-FR").format(Math.round(v));
 }
 
 interface KpiCardProps {

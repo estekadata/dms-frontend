@@ -58,17 +58,21 @@ export default function DashboardPage() {
       </div>
 
       {/* Tendance */}
-      {kpis && (
-        <div className="bg-surface border border-border rounded-[14px] px-5 py-3 mb-8 flex gap-6 text-sm text-text-dim">
-          <span>Tendance vs mois precedent :</span>
-          <span className={kpis.ventes_mois - kpis.ventes_mois_prec >= 0 ? "text-emerald-600 font-semibold" : "text-red-600 font-semibold"}>
-            {kpis.ventes_mois - kpis.ventes_mois_prec >= 0 ? "+" : ""}{kpis.ventes_mois - kpis.ventes_mois_prec} ventes
-          </span>
-          <span className={kpis.ca_mois - kpis.ca_mois_prec >= 0 ? "text-emerald-600 font-semibold" : "text-red-600 font-semibold"}>
-            {kpis.ca_mois - kpis.ca_mois_prec >= 0 ? "+" : ""}{Math.round(kpis.ca_mois - kpis.ca_mois_prec).toLocaleString("fr-FR")} EUR CA
-          </span>
-        </div>
-      )}
+      {kpis && (() => {
+        const deltaVentes = (kpis.ventes_mois ?? 0) - (kpis.ventes_mois_prec ?? 0);
+        const deltaCa = (kpis.ca_mois ?? 0) - (kpis.ca_mois_prec ?? 0);
+        return (
+          <div className="bg-surface border border-border rounded-[14px] px-5 py-3 mb-8 flex gap-6 text-sm text-text-dim">
+            <span>Tendance vs mois precedent :</span>
+            <span className={deltaVentes >= 0 ? "text-emerald-600 font-semibold" : "text-red-600 font-semibold"}>
+              {deltaVentes >= 0 ? "+" : ""}{deltaVentes} ventes
+            </span>
+            <span className={deltaCa >= 0 ? "text-emerald-600 font-semibold" : "text-red-600 font-semibold"}>
+              {deltaCa >= 0 ? "+" : ""}{Math.round(deltaCa).toLocaleString("fr-FR")} EUR CA
+            </span>
+          </div>
+        );
+      })()}
 
       {/* Navigation Grid */}
       {navGrid.map((section) => (
