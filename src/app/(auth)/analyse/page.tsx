@@ -162,7 +162,7 @@ export default function AnalysePage() {
 
       {loading ? (
         <div className="text-center py-16 text-text-muted">Chargement...</div>
-      ) : tab === "Stock" && data ? (
+      ) : tab === "Stock" && data && data.topMarques && data.byEnergie ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-surface border border-border rounded-[14px] p-6">
             <ChartHeader title="Stock disponible par marque (Top 10)" total={data.totalStock ?? 0} unit="moteurs" />
@@ -209,7 +209,7 @@ export default function AnalysePage() {
             <p className="text-5xl font-bold text-brand">{(data.avg ?? 0).toLocaleString("fr-FR")} €</p>
           </div>
         </div>
-      ) : tab === "Tendances" && data ? (
+      ) : tab === "Tendances" && data && data.months ? (
         <div className="bg-surface border border-border rounded-[14px] p-6">
           <ChartHeader title="Réceptions vs Ventes — 12 derniers mois" total={(data.totalRecus ?? 0) + (data.totalVendus ?? 0)} unit="mouvements" />
           <ResponsiveContainer width="100%" height={300}>
@@ -224,7 +224,7 @@ export default function AnalysePage() {
             </BarChart>
           </ResponsiveContainer>
         </div>
-      ) : tab === "Offres" && data ? (
+      ) : tab === "Offres" && data && data.topOffres ? (
         <div className="bg-surface border border-border rounded-[14px] p-6">
           <ChartHeader title="Top 15 références les plus vendues" total={data.totalVentes ?? 0} unit="ventes" />
           <ResponsiveContainer width="100%" height={300}>
