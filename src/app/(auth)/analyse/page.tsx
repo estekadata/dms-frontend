@@ -17,7 +17,7 @@ const tooltipStyle = { background: "#FFFFFF", border: "1px solid #E5E7EB", borde
 // Helper: récupère toutes les lignes en paginant (dépasse la limite Supabase de 1000/5000)
 async function fetchAll<T = any>(buildQuery: (from: number, to: number) => any, maxTotal = 50000): Promise<T[]> {
   const all: T[] = [];
-  const pageSize = 1000;
+  const pageSize = 5000;
   let from = 0;
   while (from < maxTotal) {
     const { data, error } = await buildQuery(from, from + pageSize - 1);

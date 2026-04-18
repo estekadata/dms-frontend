@@ -30,7 +30,7 @@ export default function VentesPage() {
 
       // Pagination pour dépasser la limite Supabase de 1000/5000
       const allData: any[] = [];
-      const pageSize = 1000;
+      const pageSize = 5000;
       let from = 0;
       while (true) {
         const { data: batch, error } = await supabase
