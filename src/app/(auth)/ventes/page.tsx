@@ -20,72 +20,19 @@ export default function VentesPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const table = piece === "moteurs" ? "tbl_expeditions_moteurs" : "tbl_expeditions_boites";
-      const cutoff = new Date();
-      cutoff.setMonth(cutoff.getMonth() - nMonths);
 
-      const selectCols = piece === "moteurs"
-        ? "date_validation, prix_vente_moteur, n_moteur"
-        : "date_validation, n_bv";
+      // 3 RPCs qui agrègent côté serveur — ultra rapide
+      const [monthsRes, topRes, totalRes] = await Promise.all([
+        supabase.rpc("get_ventes_par_mois", { p_piece: piece, p_months: nMonths }),
+        piece === "moteurs"
+          ? supabase.rpc("get_top_types_vendus", { p_months: nMonths, p_limit: 15 })
+          : Promise.resolve({ data: [] as any[] }),
+        supabase.rpc("get_ventes_total_count", { p_piece: piece, p_months: nMonths }),
+      ]);
 
-      // Pagination pour dépasser la limite Supabase de 1000/5000
-      const allData: any[] = [];
-      const pageSize = 5000;
-      let from = 0;
-      while (true) {
-        const { data: batch, error } = await supabase
-          .from(table)
-          .select(selectCols)
-          .gte("date_validation", cutoff.toISOString())
-          .order("date_validation", { ascending: true })
-          .range(from, from + pageSize - 1);
-        if (error || !batch || batch.length === 0) break;
-        allData.push(...batch);
-        if (batch.length < pageSize) break;
-        from += pageSize;
-        if (from > 100000) break; // garde-fou
-      }
-      const data = allData;
-
-      if (!data.length) { setLoading(false); return; }
-
-      setTotalVentes(data.length);
-
-      const byMonth: Record<string, number> = {};
-      data.forEach((row: any) => {
-        const d = new Date(row.date_validation);
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-        byMonth[key] = (byMonth[key] || 0) + 1;
-      });
-      setVentesParMois(
-        Object.entries(byMonth).map(([mois, nb_vendus]) => ({ mois, nb_vendus }))
-      );
-
-      if (piece === "moteurs") {
-        const motorIds = [...new Set(data.map((r: any) => r.n_moteur).filter(Boolean))] as number[];
-        const codeCount: Record<string, number> = {};
-        const batchSize = 500;
-        for (let i = 0; i < motorIds.length; i += batchSize) {
-          const batch = motorIds.slice(i, i + batchSize);
-          const { data: motors } = await supabase
-            .from("v_moteurs_dispo")
-            .select("n_moteur, nom_type_moteur")
-            .in("n_moteur", batch);
-          (motors || []).forEach((m: any) => {
-            const raw = (m.nom_type_moteur || "").trim();
-            const code = raw.split(/[\s\-]+/)[0].toUpperCase();
-            if (code && code.length >= 2) codeCount[code] = (codeCount[code] || 0) + 1;
-          });
-        }
-        setTopCodes(
-          Object.entries(codeCount)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 15)
-            .map(([type_moteur, nb_vendus]) => ({ type_moteur, nb_vendus }))
-        );
-      } else {
-        setTopCodes([]);
-      }
+      setVentesParMois((monthsRes.data as any[]) || []);
+      setTopCodes((topRes.data as any[]) || []);
+      setTotalVentes(Number(totalRes.data ?? 0));
       setLoading(false);
     }
     load();

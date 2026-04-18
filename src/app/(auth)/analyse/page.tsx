@@ -76,27 +76,47 @@ export default function AnalysePage() {
         const moteurs = await fetchAll((from, to) =>
           supabase
             .from("v_moteurs_dispo")
-            .select("code_moteur, prix_achat_moteur")
+            .select("marque, nom_type_moteur, prix_achat_moteur")
             .eq("est_disponible", 1)
-            .gt("prix_achat_moteur", 0) // exclure les 0 qui faussent la distribution
+            .gt("prix_achat_moteur", 0)
             .range(from, to)
         );
 
-        const ranges = [
-          { label: "0–100€", min: 0, max: 100, count: 0 },
-          { label: "100–200€", min: 100, max: 200, count: 0 },
-          { label: "200–400€", min: 200, max: 400, count: 0 },
-          { label: "400–600€", min: 400, max: 600, count: 0 },
-          { label: "600–1000€", min: 600, max: 1000, count: 0 },
-          { label: "1000€+", min: 1000, max: Infinity, count: 0 },
-        ];
+        // Prix moyen par marque
+        const byMarque: Record<string, { total: number; count: number }> = {};
+        // Prix moyen par type moteur (ex: K9K, 9HO, DV6TED4)
+        const byType: Record<string, { total: number; count: number }> = {};
+
         (moteurs || []).forEach((m: any) => {
           const p = m.prix_achat_moteur || 0;
-          const range = ranges.find((r) => p >= r.min && p < r.max);
-          if (range) range.count++;
+          const marque = (m.marque || "Inconnu").toUpperCase();
+          byMarque[marque] = byMarque[marque] || { total: 0, count: 0 };
+          byMarque[marque].total += p;
+          byMarque[marque].count++;
+
+          const raw = (m.nom_type_moteur || "").trim();
+          const type = raw.split(/[\s\-]+/)[0].toUpperCase();
+          if (type && type.length >= 2) {
+            byType[type] = byType[type] || { total: 0, count: 0 };
+            byType[type].total += p;
+            byType[type].count++;
+          }
         });
+
+        const prixParMarque = Object.entries(byMarque)
+          .filter(([, v]) => v.count >= 3) // éviter le bruit (marques avec 1-2 moteurs)
+          .map(([marque, v]) => ({ name: marque, prixMoyen: Math.round(v.total / v.count), nb: v.count }))
+          .sort((a, b) => b.prixMoyen - a.prixMoyen)
+          .slice(0, 10);
+
+        const prixParType = Object.entries(byType)
+          .filter(([, v]) => v.count >= 3)
+          .map(([type, v]) => ({ name: type, prixMoyen: Math.round(v.total / v.count), nb: v.count }))
+          .sort((a, b) => b.prixMoyen - a.prixMoyen)
+          .slice(0, 15);
+
         const avg = (moteurs || []).reduce((s: number, m: any) => s + (m.prix_achat_moteur || 0), 0) / ((moteurs || []).length || 1);
-        setData({ ranges, avg: Math.round(avg), totalPrix: (moteurs || []).length });
+        setData({ prixParMarque, prixParType, avg: Math.round(avg), totalPrix: (moteurs || []).length });
       } else if (tab === "Tendances") {
         const cutoff = new Date();
         cutoff.setMonth(cutoff.getMonth() - 12);
@@ -225,23 +245,38 @@ export default function AnalysePage() {
             </ResponsiveContainer>
           </div>
         </div>
-      ) : tab === "Prix" && data && data.ranges ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      ) : tab === "Prix" && data && data.prixParMarque ? (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-surface border border-border rounded-[14px] p-6 flex flex-col justify-center items-center">
+              <p className="text-text-dim text-sm mb-2">Prix d&apos;achat moyen</p>
+              <p className="text-4xl font-bold text-brand">{(data.avg ?? 0).toLocaleString("fr-FR")} €</p>
+              <p className="text-xs text-text-muted mt-2">sur {(data.totalPrix ?? 0).toLocaleString("fr-FR")} moteurs</p>
+            </div>
+            <div className="bg-surface border border-border rounded-[14px] p-6 md:col-span-2">
+              <ChartHeader title="Prix moyen par marque (Top 10)" total={data.prixParMarque?.length ?? 0} unit="marques" />
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={data.prixParMarque} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis type="number" tick={{ fontSize: 11, fill: "#4B5563" }} tickFormatter={(v) => `${v} €`} />
+                  <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11, fill: "#4B5563" }} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(value: any, _name, props) => [`${value} € (${props.payload.nb} moteurs)`, "Prix moyen"]} />
+                  <Bar dataKey="prixMoyen" fill="#C41E3A" radius={[0, 4, 4, 0]} name="Prix moyen" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
           <div className="bg-surface border border-border rounded-[14px] p-6">
-            <ChartHeader title="Distribution des prix d'achat" total={data.totalPrix ?? 0} unit="moteurs" />
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={data.ranges}>
+            <ChartHeader title="Prix moyen par type moteur (Top 15)" total={data.prixParType?.length ?? 0} unit="types" />
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={data.prixParType}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#4B5563" }} />
-                <YAxis tick={{ fontSize: 12, fill: "#4B5563" }} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="count" fill="#C41E3A" radius={[6, 6, 0, 0]} name="Nb moteurs" />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#4B5563" }} />
+                <YAxis tick={{ fontSize: 12, fill: "#4B5563" }} tickFormatter={(v) => `${v} €`} />
+                <Tooltip contentStyle={tooltipStyle} formatter={(value: any, _name, props) => [`${value} € (${props.payload.nb} moteurs)`, "Prix moyen"]} />
+                <Bar dataKey="prixMoyen" fill="#C41E3A" radius={[4, 4, 0, 0]} name="Prix moyen" />
               </BarChart>
             </ResponsiveContainer>
-          </div>
-          <div className="bg-surface border border-border rounded-[14px] p-6 flex flex-col justify-center items-center">
-            <p className="text-text-dim text-sm mb-2">Prix d&apos;achat moyen</p>
-            <p className="text-5xl font-bold text-brand">{(data.avg ?? 0).toLocaleString("fr-FR")} €</p>
           </div>
         </div>
       ) : tab === "Tendances" && data && data.months ? (
