@@ -20,6 +20,8 @@ type Detail = { n_moteur?: number; code_moteur?: string; num_serie?: string; mar
 
 export default function ReceptionsPage() {
   const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [receptions, setReceptions] = useState<Reception[]>([]);
   const [selected, setSelected] = useState<Reception | null>(null);
   const [details, setDetails] = useState<Detail[]>([]);
@@ -33,16 +35,18 @@ export default function ReceptionsPage() {
         .from("v_receptions")
         .select("n_reception, date_reception, fournisseur, nb_moteurs, nb_boites, montant_total, statut")
         .order("n_reception", { ascending: false })
-        .limit(200);
+        .limit(1000);
 
       if (search) query = query.ilike("fournisseur", `%${search}%`);
+      if (dateFrom) query = query.gte("date_reception", dateFrom);
+      if (dateTo) query = query.lte("date_reception", dateTo);
 
       const { data } = await query;
       setReceptions(data || []);
       setLoading(false);
     }
     load();
-  }, [search]);
+  }, [search, dateFrom, dateTo]);
 
   async function openDetail(rec: Reception) {
     setSelected(rec);
@@ -69,12 +73,38 @@ export default function ReceptionsPage() {
         <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Montant total</p><p className="text-2xl font-bold text-foreground">{Math.round(totalMontant).toLocaleString("fr-FR")} €</p></CardContent></Card>
       </div>
 
-      <Input
-        placeholder="Rechercher par fournisseur..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="max-w-sm mb-5 bg-surface-alt border-border text-foreground placeholder:text-text-muted"
-      />
+      <div className="flex flex-wrap items-center gap-3 mb-5">
+        <Input
+          placeholder="Rechercher par fournisseur..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-sm bg-surface-alt border-border text-foreground placeholder:text-text-muted"
+        />
+        <div className="flex items-center gap-2">
+          <label className="text-xs uppercase text-text-dim font-semibold">Du</label>
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="w-[160px] bg-surface-alt border-border text-foreground"
+          />
+          <label className="text-xs uppercase text-text-dim font-semibold">Au</label>
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="w-[160px] bg-surface-alt border-border text-foreground"
+          />
+          {(dateFrom || dateTo) && (
+            <button
+              onClick={() => { setDateFrom(""); setDateTo(""); }}
+              className="text-xs text-text-muted hover:text-foreground transition-colors"
+            >
+              Réinitialiser
+            </button>
+          )}
+        </div>
+      </div>
 
       <div className={`grid gap-6 ${selected ? "grid-cols-2" : "grid-cols-1"}`}>
         <div className="bg-surface border border-border rounded-[14px] overflow-hidden">
