@@ -48,10 +48,10 @@ export default function ReceptionsPage() {
     setSelected(rec);
     setDetailLoading(true);
     const { data } = await supabase
-      .from("tbl_moteurs")
-      .select("n_moteur, code_moteur, num_serie, marque, prix_achat_moteur")
-      .eq("n_reception", rec.n_reception)
-      .limit(100);
+      .from("v_moteurs_dispo")
+      .select("n_moteur, nom_type_moteur, num_serie, marque, prix_achat_moteur")
+      .eq("num_reception", rec.n_reception)
+      .limit(500);
     setDetails(data || []);
     setDetailLoading(false);
   }
@@ -141,7 +141,7 @@ export default function ReceptionsPage() {
                 <tbody className="divide-y divide-border">
                   {details.map((d) => (
                     <tr key={d.n_moteur} className="hover:bg-surface-hover transition-colors">
-                      <td className="px-3 py-2 font-semibold text-foreground">{d.code_moteur || "—"}</td>
+                      <td className="px-3 py-2 font-semibold text-foreground">{(d as any).nom_type_moteur || d.code_moteur || "—"}</td>
                       <td className="px-3 py-2 text-text-dim text-xs">{d.num_serie || "—"}</td>
                       <td className="px-3 py-2 text-text-dim">{d.marque || "—"}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-text-dim">{d.prix_achat_moteur ? `${Math.round(d.prix_achat_moteur)} €` : "—"}</td>
