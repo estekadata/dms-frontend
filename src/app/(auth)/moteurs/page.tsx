@@ -6,52 +6,57 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-// Pagination pour dépasser la limite Supabase (1000/5000 selon config)
-async function fetchAll<T = any>(buildQuery: (from: number, to: number) => any, maxTotal = 50000): Promise<T[]> {
-  const all: T[] = [];
-  const pageSize = 5000;
-  let from = 0;
-  while (from < maxTotal) {
-    const { data, error } = await buildQuery(from, from + pageSize - 1);
-    if (error || !data || data.length === 0) break;
-    all.push(...data);
-    if (data.length < pageSize) break;
-    from += pageSize;
-  }
-  return all;
-}
+const ROW_LIMIT = 1000;
 
 export default function MoteursPage() {
   const [search, setSearch] = useState("");
   const [statut, setStatut] = useState("Tous");
   const [moteurs, setMoteurs] = useState<any[]>([]);
+  const [counts, setCounts] = useState({ total: 0, dispo: 0, reserve: 0, archive: 0 });
   const [loading, setLoading] = useState(false);
+
+  function applySearch<T extends { or: (f: string) => T }>(q: T): T {
+    return search
+      ? q.or(`nom_type_moteur.ilike.%${search}%,code_moteur.ilike.%${search}%,num_serie.ilike.%${search}%`)
+      : q;
+  }
 
   async function loadMoteurs() {
     setLoading(true);
-    const data = await fetchAll((from, to) => {
-      let q = supabase
-        .from("v_moteurs_dispo")
-        .select("n_moteur, code_moteur, nom_type_moteur, num_serie, marque, energie, prix_achat_moteur, est_disponible, archiver")
-        .order("n_moteur", { ascending: false })
-        .range(from, to);
 
-      if (search) {
-        q = q.or(`nom_type_moteur.ilike.%${search}%,code_moteur.ilike.%${search}%,num_serie.ilike.%${search}%`);
-      }
-      if (statut === "Disponible") q = q.eq("est_disponible", 1);
-      if (statut === "Vendu/Archivé") q = q.eq("archiver", 1);
-      return q;
+    let rowsQ = supabase
+      .from("v_moteurs_dispo")
+      .select("n_moteur, code_moteur, nom_type_moteur, num_serie, marque, energie, prix_achat_moteur, est_disponible, archiver, resa_client_moteur")
+      .order("n_moteur", { ascending: false })
+      .limit(ROW_LIMIT);
+    rowsQ = applySearch(rowsQ as any) as any;
+    if (statut === "Disponible") rowsQ = rowsQ.eq("est_disponible", 1).is("resa_client_moteur", null);
+    if (statut === "Réservé") rowsQ = rowsQ.eq("est_disponible", 1).not("resa_client_moteur", "is", null);
+    if (statut === "Vendu/Archivé") rowsQ = rowsQ.eq("est_disponible", 0);
+
+    const countBase = () => applySearch(
+      supabase.from("v_moteurs_dispo").select("*", { count: "exact", head: true }) as any
+    );
+
+    const [rowsRes, totalRes, dispoRes, reserveRes, archiveRes] = await Promise.all([
+      rowsQ,
+      countBase(),
+      countBase().eq("est_disponible", 1).is("resa_client_moteur", null),
+      countBase().eq("est_disponible", 1).not("resa_client_moteur", "is", null),
+      countBase().eq("est_disponible", 0),
+    ]);
+
+    setMoteurs(rowsRes.data || []);
+    setCounts({
+      total: totalRes.count || 0,
+      dispo: dispoRes.count || 0,
+      reserve: reserveRes.count || 0,
+      archive: archiveRes.count || 0,
     });
-    setMoteurs(data);
     setLoading(false);
   }
 
   useEffect(() => { loadMoteurs(); }, [search, statut]);
-
-  const nbDispo = moteurs.filter((m) => m.est_disponible === 1).length;
-  const nbReserve = moteurs.filter((m) => m.est_disponible === 0 && !m.archiver).length;
-  const nbArchive = moteurs.filter((m) => m.archiver).length;
 
   return (
     <div>
@@ -77,11 +82,14 @@ export default function MoteursPage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Résultats</p><p className="text-2xl font-bold text-brand">{moteurs.length}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Disponibles</p><p className="text-2xl font-bold text-emerald-600">{nbDispo}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Réservés</p><p className="text-2xl font-bold text-amber-600">{nbReserve}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Archivés</p><p className="text-2xl font-bold text-text-muted">{nbArchive}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Résultats</p><p className="text-2xl font-bold text-brand">{counts.total.toLocaleString("fr-FR")}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Disponibles</p><p className="text-2xl font-bold text-emerald-600">{counts.dispo.toLocaleString("fr-FR")}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Réservés</p><p className="text-2xl font-bold text-amber-600">{counts.reserve.toLocaleString("fr-FR")}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Vendus/Archivés</p><p className="text-2xl font-bold text-text-muted">{counts.archive.toLocaleString("fr-FR")}</p></CardContent></Card>
       </div>
+      {counts.total > moteurs.length && !loading && (
+        <p className="text-xs text-text-muted mb-3">Affichage des {moteurs.length.toLocaleString("fr-FR")} derniers moteurs sur {counts.total.toLocaleString("fr-FR")} — affinez via la recherche.</p>
+      )}
 
       {loading ? (
         <div className="text-center py-12 text-text-muted">Chargement...</div>
