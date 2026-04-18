@@ -157,7 +157,7 @@ export default function AnalysePage() {
             </ResponsiveContainer>
           </div>
         </div>
-      ) : tab === "Prix" && data ? (
+      ) : tab === "Prix" && data && data.ranges ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-surface border border-border rounded-[14px] p-6">
             <h3 className="font-semibold text-foreground mb-4">Distribution des prix d&apos;achat</h3>
@@ -173,7 +173,7 @@ export default function AnalysePage() {
           </div>
           <div className="bg-surface border border-border rounded-[14px] p-6 flex flex-col justify-center items-center">
             <p className="text-text-dim text-sm mb-2">Prix d&apos;achat moyen</p>
-            <p className="text-5xl font-bold text-brand">{data.avg.toLocaleString("fr-FR")} €</p>
+            <p className="text-5xl font-bold text-brand">{(data.avg ?? 0).toLocaleString("fr-FR")} €</p>
           </div>
         </div>
       ) : tab === "Tendances" && data ? (
