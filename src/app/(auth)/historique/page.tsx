@@ -29,12 +29,50 @@ export default function HistoriquePage() {
           .limit(200);
         setReceptions(data || []);
       } else if (tab === "Expéditions") {
-        const { data } = await supabase
+        const { data: expMoteurs } = await supabase
           .from("tbl_expeditions_moteurs")
-          .select("n_expedition, date_validation, client, code_moteur, prix_vente_moteur")
+          .select("id, n_expedition, n_moteur, date_validation, prix_vente_moteur")
           .order("date_validation", { ascending: false })
-          .limit(200);
-        setExpeditions(data || []);
+          .limit(500);
+
+        const rows = expMoteurs || [];
+        const expIds = [...new Set(rows.map((r: any) => r.n_expedition).filter(Boolean))] as number[];
+        const motorIds = [...new Set(rows.map((r: any) => r.n_moteur).filter(Boolean))] as number[];
+
+        const [expRes, motRes] = await Promise.all([
+          expIds.length
+            ? supabase.from("tbl_expeditions").select("n_expedition, n_client").in("n_expedition", expIds)
+            : Promise.resolve({ data: [] as any[] }),
+          motorIds.length
+            ? supabase.from("v_moteurs_dispo").select("n_moteur, nom_type_moteur, code_moteur").in("n_moteur", motorIds)
+            : Promise.resolve({ data: [] as any[] }),
+        ]);
+
+        const clientIds = [...new Set((expRes.data || []).map((e: any) => e.n_client).filter(Boolean))] as number[];
+        const cliRes = clientIds.length
+          ? await supabase.from("tbl_clients").select("n_client, societe, nom_contact").in("n_client", clientIds)
+          : { data: [] as any[] };
+
+        const clientById: Record<number, string> = {};
+        (cliRes.data || []).forEach((c: any) => {
+          clientById[c.n_client] = c.societe || c.nom_contact || `Client #${c.n_client}`;
+        });
+        const clientByExp: Record<number, string> = {};
+        (expRes.data || []).forEach((e: any) => {
+          if (e.n_client && clientById[e.n_client]) clientByExp[e.n_expedition] = clientById[e.n_client];
+        });
+        const codeByMotor: Record<number, string> = {};
+        (motRes.data || []).forEach((m: any) => {
+          codeByMotor[m.n_moteur] = m.nom_type_moteur || m.code_moteur || "";
+        });
+
+        setExpeditions(rows.map((r: any) => ({
+          n_expedition: r.n_expedition,
+          date_validation: r.date_validation,
+          client: clientByExp[r.n_expedition] || "—",
+          code_moteur: codeByMotor[r.n_moteur] || "—",
+          prix_vente_moteur: r.prix_vente_moteur,
+        })));
       } else {
         const cutoff = new Date();
         cutoff.setMonth(cutoff.getMonth() - 12);
