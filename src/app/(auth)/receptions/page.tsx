@@ -18,6 +18,21 @@ type Reception = {
 
 type Detail = { n_moteur?: number; code_moteur?: string; num_serie?: string; marque?: string; prix_achat_moteur?: number; };
 
+// Pagination pour dépasser la limite Supabase (1000/5000 selon config)
+async function fetchAll<T = any>(buildQuery: (from: number, to: number) => any, maxTotal = 50000): Promise<T[]> {
+  const all: T[] = [];
+  const pageSize = 5000;
+  let from = 0;
+  while (from < maxTotal) {
+    const { data, error } = await buildQuery(from, from + pageSize - 1);
+    if (error || !data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
 export default function ReceptionsPage() {
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -31,18 +46,18 @@ export default function ReceptionsPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      let query = supabase
-        .from("v_receptions")
-        .select("n_reception, date_reception, fournisseur, nb_moteurs, nb_boites, montant_total, statut")
-        .order("n_reception", { ascending: false })
-        .limit(1000);
-
-      if (search) query = query.ilike("fournisseur", `%${search}%`);
-      if (dateFrom) query = query.gte("date_reception", dateFrom);
-      if (dateTo) query = query.lte("date_reception", dateTo);
-
-      const { data } = await query;
-      setReceptions(data || []);
+      const data = await fetchAll<Reception>((from, to) => {
+        let q = supabase
+          .from("v_receptions")
+          .select("n_reception, date_reception, fournisseur, nb_moteurs, nb_boites, montant_total, statut")
+          .order("n_reception", { ascending: false })
+          .range(from, to);
+        if (search) q = q.ilike("fournisseur", `%${search}%`);
+        if (dateFrom) q = q.gte("date_reception", dateFrom);
+        if (dateTo) q = q.lte("date_reception", dateTo);
+        return q;
+      });
+      setReceptions(data);
       setLoading(false);
     }
     load();
