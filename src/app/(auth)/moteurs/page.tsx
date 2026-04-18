@@ -6,6 +6,21 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
+// Pagination pour dépasser la limite Supabase (1000/5000 selon config)
+async function fetchAll<T = any>(buildQuery: (from: number, to: number) => any, maxTotal = 50000): Promise<T[]> {
+  const all: T[] = [];
+  const pageSize = 5000;
+  let from = 0;
+  while (from < maxTotal) {
+    const { data, error } = await buildQuery(from, from + pageSize - 1);
+    if (error || !data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
 export default function MoteursPage() {
   const [search, setSearch] = useState("");
   const [statut, setStatut] = useState("Tous");
@@ -14,20 +29,21 @@ export default function MoteursPage() {
 
   async function loadMoteurs() {
     setLoading(true);
-    let query = supabase
-      .from("v_moteurs_dispo")
-      .select("n_moteur, code_moteur, num_serie, marque, energie, prix_achat_moteur, est_disponible, archiver")
-      .order("n_moteur", { ascending: false })
-      .limit(500);
+    const data = await fetchAll((from, to) => {
+      let q = supabase
+        .from("v_moteurs_dispo")
+        .select("n_moteur, code_moteur, nom_type_moteur, num_serie, marque, energie, prix_achat_moteur, est_disponible, archiver")
+        .order("n_moteur", { ascending: false })
+        .range(from, to);
 
-    if (search) {
-      query = query.or(`code_moteur.ilike.%${search}%,num_serie.ilike.%${search}%`);
-    }
-    if (statut === "Disponible") query = query.eq("est_disponible", 1);
-    if (statut === "Vendu/Archivé") query = query.eq("archiver", 1);
-
-    const { data } = await query;
-    setMoteurs(data || []);
+      if (search) {
+        q = q.or(`nom_type_moteur.ilike.%${search}%,code_moteur.ilike.%${search}%,num_serie.ilike.%${search}%`);
+      }
+      if (statut === "Disponible") q = q.eq("est_disponible", 1);
+      if (statut === "Vendu/Archivé") q = q.eq("archiver", 1);
+      return q;
+    });
+    setMoteurs(data);
     setLoading(false);
   }
 
@@ -88,7 +104,7 @@ export default function MoteursPage() {
                 {moteurs.map((m) => (
                   <tr key={m.n_moteur} className="hover:bg-surface-hover transition-colors">
                     <td className="px-4 py-3 font-mono text-xs text-text-muted">{m.n_moteur}</td>
-                    <td className="px-4 py-3 font-semibold text-foreground">{m.code_moteur || "—"}</td>
+                    <td className="px-4 py-3 font-semibold text-foreground">{m.nom_type_moteur || m.code_moteur || "—"}</td>
                     <td className="px-4 py-3 text-text-dim">{m.num_serie || "—"}</td>
                     <td className="px-4 py-3 text-text-dim">{m.marque || "—"}</td>
                     <td className="px-4 py-3 text-text-dim">{m.energie || "—"}</td>
