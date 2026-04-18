@@ -28,13 +28,26 @@ export default function VentesPage() {
         ? "date_validation, prix_vente_moteur, n_moteur"
         : "date_validation, n_bv";
 
-      const { data } = await supabase
-        .from(table)
-        .select(selectCols)
-        .gte("date_validation", cutoff.toISOString())
-        .order("date_validation", { ascending: true });
+      // Pagination pour dépasser la limite Supabase de 1000/5000
+      const allData: any[] = [];
+      const pageSize = 1000;
+      let from = 0;
+      while (true) {
+        const { data: batch, error } = await supabase
+          .from(table)
+          .select(selectCols)
+          .gte("date_validation", cutoff.toISOString())
+          .order("date_validation", { ascending: true })
+          .range(from, from + pageSize - 1);
+        if (error || !batch || batch.length === 0) break;
+        allData.push(...batch);
+        if (batch.length < pageSize) break;
+        from += pageSize;
+        if (from > 100000) break; // garde-fou
+      }
+      const data = allData;
 
-      if (!data) { setLoading(false); return; }
+      if (!data.length) { setLoading(false); return; }
 
       setTotalVentes(data.length);
 
@@ -49,27 +62,27 @@ export default function VentesPage() {
       );
 
       if (piece === "moteurs") {
-        const motorIds = [...new Set(data.map((r: any) => r.n_moteur).filter(Boolean))].slice(0, 2000);
-        if (motorIds.length > 0) {
+        const motorIds = [...new Set(data.map((r: any) => r.n_moteur).filter(Boolean))] as number[];
+        const codeCount: Record<string, number> = {};
+        const batchSize = 500;
+        for (let i = 0; i < motorIds.length; i += batchSize) {
+          const batch = motorIds.slice(i, i + batchSize);
           const { data: motors } = await supabase
             .from("v_moteurs_dispo")
             .select("n_moteur, nom_type_moteur")
-            .in("n_moteur", motorIds);
-
-          const codeCount: Record<string, number> = {};
+            .in("n_moteur", batch);
           (motors || []).forEach((m: any) => {
             const raw = (m.nom_type_moteur || "").trim();
-            // "K9K-732 dém AVT ppe Siemens" -> "K9K"
             const code = raw.split(/[\s\-]+/)[0].toUpperCase();
             if (code && code.length >= 2) codeCount[code] = (codeCount[code] || 0) + 1;
           });
-          setTopCodes(
-            Object.entries(codeCount)
-              .sort((a, b) => b[1] - a[1])
-              .slice(0, 15)
-              .map(([type_moteur, nb_vendus]) => ({ type_moteur, nb_vendus }))
-          );
         }
+        setTopCodes(
+          Object.entries(codeCount)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 15)
+            .map(([type_moteur, nb_vendus]) => ({ type_moteur, nb_vendus }))
+        );
       } else {
         setTopCodes([]);
       }

@@ -14,6 +14,21 @@ const COLORS = ["#C41E3A", "#F87171", "#FBBF24", "#34D399", "#60A5FA", "#A78BFA"
 
 const tooltipStyle = { background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: 10, color: "#111827", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" };
 
+// Helper: récupère toutes les lignes en paginant (dépasse la limite Supabase de 1000/5000)
+async function fetchAll<T = any>(buildQuery: (from: number, to: number) => any, maxTotal = 50000): Promise<T[]> {
+  const all: T[] = [];
+  const pageSize = 1000;
+  let from = 0;
+  while (from < maxTotal) {
+    const { data, error } = await buildQuery(from, from + pageSize - 1);
+    if (error || !data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
 function ChartHeader({ title, total, unit }: { title: string; total: number; unit: string }) {
   return (
     <div className="flex items-center justify-between mb-4">
@@ -35,12 +50,14 @@ export default function AnalysePage() {
       setLoading(true);
       setData(null); // Reset pour éviter de réutiliser les données du tab précédent
       if (tab === "Stock") {
-        // Filtrer directement côté DB pour ne récupérer que les dispos
-        const { data: moteurs } = await supabase
-          .from("v_moteurs_dispo")
-          .select("marque, energie")
-          .eq("est_disponible", 1)
-          .limit(10000);
+        // Pagination pour dépasser la limite Supabase
+        const moteurs = await fetchAll((from, to) =>
+          supabase
+            .from("v_moteurs_dispo")
+            .select("marque, energie")
+            .eq("est_disponible", 1)
+            .range(from, to)
+        );
 
         const byMarque: Record<string, number> = {};
         const byEnergie: Record<string, number> = {};
@@ -56,12 +73,14 @@ export default function AnalysePage() {
           byEnergie: Object.entries(byEnergie).map(([name, value]) => ({ name, value })),
         });
       } else if (tab === "Prix") {
-        const { data: moteurs } = await supabase
-          .from("v_moteurs_dispo")
-          .select("code_moteur, prix_achat_moteur")
-          .eq("est_disponible", 1)
-          .gt("prix_achat_moteur", 0) // exclure les 0 qui faussent la distribution
-          .limit(10000);
+        const moteurs = await fetchAll((from, to) =>
+          supabase
+            .from("v_moteurs_dispo")
+            .select("code_moteur, prix_achat_moteur")
+            .eq("est_disponible", 1)
+            .gt("prix_achat_moteur", 0) // exclure les 0 qui faussent la distribution
+            .range(from, to)
+        );
 
         const ranges = [
           { label: "0–100€", min: 0, max: 100, count: 0 },
@@ -81,9 +100,20 @@ export default function AnalysePage() {
       } else if (tab === "Tendances") {
         const cutoff = new Date();
         cutoff.setMonth(cutoff.getMonth() - 12);
-        const [{ data: recData }, { data: expData }] = await Promise.all([
-          supabase.from("v_receptions").select("date_reception, nb_moteurs").gte("date_reception", cutoff.toISOString()),
-          supabase.from("tbl_expeditions_moteurs").select("date_validation, prix_vente_moteur").gte("date_validation", cutoff.toISOString()),
+        const cutoffIso = cutoff.toISOString();
+        const [recData, expData] = await Promise.all([
+          fetchAll((from, to) =>
+            supabase.from("v_receptions")
+              .select("date_reception, nb_moteurs")
+              .gte("date_reception", cutoffIso)
+              .range(from, to)
+          ),
+          fetchAll((from, to) =>
+            supabase.from("tbl_expeditions_moteurs")
+              .select("date_validation, prix_vente_moteur")
+              .gte("date_validation", cutoffIso)
+              .range(from, to)
+          ),
         ]);
         const byMonth: Record<string, { mois: string; recus: number; vendus: number; ca: number }> = {};
         (recData || []).forEach((r: any) => {
@@ -102,20 +132,25 @@ export default function AnalysePage() {
         const totalVendus = monthsArr.reduce((s, m) => s + m.vendus, 0);
         setData({ months: monthsArr, totalRecus, totalVendus });
       } else {
-        // Récupérer les expéditions avec n_moteur puis joindre sur la vue pour obtenir nom_type_moteur
-        const { data: topSales } = await supabase
-          .from("tbl_expeditions_moteurs")
-          .select("n_moteur, prix_vente_moteur")
-          .not("n_moteur", "is", null)
-          .limit(5000);
+        // Récupérer toutes les expéditions (avec pagination)
+        const topSales = await fetchAll((from, to) =>
+          supabase
+            .from("tbl_expeditions_moteurs")
+            .select("n_moteur, prix_vente_moteur")
+            .not("n_moteur", "is", null)
+            .range(from, to)
+        );
 
-        const motorIds = [...new Set((topSales || []).map((e: any) => e.n_moteur).filter(Boolean))];
+        const motorIds = [...new Set((topSales || []).map((e: any) => e.n_moteur).filter(Boolean))] as number[];
         const codeByMotor: Record<number, string> = {};
-        if (motorIds.length > 0) {
+        // Batch IN queries pour éviter URL trop longues
+        const batchSize = 500;
+        for (let i = 0; i < motorIds.length; i += batchSize) {
+          const batch = motorIds.slice(i, i + batchSize);
           const { data: motors } = await supabase
             .from("v_moteurs_dispo")
             .select("n_moteur, nom_type_moteur")
-            .in("n_moteur", motorIds);
+            .in("n_moteur", batch);
           (motors || []).forEach((m: any) => {
             const raw = (m.nom_type_moteur || "").trim();
             const code = raw.split(/[\s\-]+/)[0].toUpperCase();
