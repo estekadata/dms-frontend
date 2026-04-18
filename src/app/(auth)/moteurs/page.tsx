@@ -26,7 +26,7 @@ export default function MoteursPage() {
 
     let rowsQ = supabase
       .from("v_moteurs_dispo")
-      .select("n_moteur, code_moteur, nom_type_moteur, num_serie, marque, energie, prix_achat_moteur, est_disponible, archiver, resa_client_moteur")
+      .select("n_moteur, code_moteur, nom_type_moteur, num_serie, marque, energie, prix_achat_moteur, est_disponible, archiver, resa_client_moteur, num_reception")
       .order("n_moteur", { ascending: false })
       .limit(ROW_LIMIT);
     rowsQ = applySearch(rowsQ as any) as any;
@@ -46,7 +46,31 @@ export default function MoteursPage() {
       countBase().eq("est_disponible", 0),
     ]);
 
-    setMoteurs(rowsRes.data || []);
+    const rows = rowsRes.data || [];
+
+    // Fallback prix : pour les moteurs sans prix_achat_moteur, utiliser la moyenne de la réception
+    const receptionIds = [...new Set(rows.map((m: any) => m.num_reception).filter(Boolean))] as number[];
+    const avgByReception: Record<number, number> = {};
+    if (receptionIds.length > 0) {
+      const { data: recs } = await supabase
+        .from("v_receptions")
+        .select("n_reception, montant_total, nb_moteurs")
+        .in("n_reception", receptionIds);
+      (recs || []).forEach((r: any) => {
+        if (r.montant_total && r.nb_moteurs && r.nb_moteurs > 0) {
+          avgByReception[r.n_reception] = r.montant_total / r.nb_moteurs;
+        }
+      });
+    }
+    const enriched = rows.map((m: any) => ({
+      ...m,
+      prix_affiche: m.prix_achat_moteur && m.prix_achat_moteur > 0
+        ? m.prix_achat_moteur
+        : avgByReception[m.num_reception],
+      prix_est_moyenne: !(m.prix_achat_moteur && m.prix_achat_moteur > 0) && !!avgByReception[m.num_reception],
+    }));
+
+    setMoteurs(enriched);
     setCounts({
       total: totalRes.count || 0,
       dispo: dispoRes.count || 0,
@@ -117,7 +141,12 @@ export default function MoteursPage() {
                     <td className="px-4 py-3 text-text-dim">{m.marque || "—"}</td>
                     <td className="px-4 py-3 text-text-dim">{m.energie || "—"}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-text-dim">
-                      {m.prix_achat_moteur ? `${Math.round(m.prix_achat_moteur).toLocaleString("fr-FR")} €` : "—"}
+                      {m.prix_affiche ? (
+                        <span title={m.prix_est_moyenne ? "Moyenne réception (prix individuel non saisi)" : "Prix d'achat saisi"}>
+                          {Math.round(m.prix_affiche).toLocaleString("fr-FR")} €
+                          {m.prix_est_moyenne && <span className="ml-1 text-text-muted">~</span>}
+                        </span>
+                      ) : "—"}
                     </td>
                     <td className="px-4 py-3 text-center">
                       {m.archiver ? (
