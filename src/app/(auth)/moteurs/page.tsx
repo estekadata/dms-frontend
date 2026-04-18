@@ -151,10 +151,12 @@ export default function MoteursPage() {
                     <td className="px-4 py-3 text-center">
                       {m.archiver ? (
                         <Badge className="bg-[rgba(90,100,120,0.10)] text-text-muted border border-[rgba(90,100,120,0.20)] hover:bg-[rgba(90,100,120,0.15)]">Archivé</Badge>
-                      ) : m.est_disponible === 1 ? (
-                        <Badge className="bg-[rgba(52,211,153,0.10)] text-emerald-600 border border-[rgba(52,211,153,0.20)] hover:bg-[rgba(52,211,153,0.15)]">Disponible</Badge>
-                      ) : (
+                      ) : m.est_disponible === 0 ? (
+                        <Badge className="bg-[rgba(148,163,184,0.15)] text-slate-600 border border-[rgba(148,163,184,0.25)] hover:bg-[rgba(148,163,184,0.20)]">Vendu</Badge>
+                      ) : m.resa_client_moteur ? (
                         <Badge className="bg-[rgba(251,191,36,0.10)] text-amber-600 border border-[rgba(251,191,36,0.20)] hover:bg-[rgba(251,191,36,0.15)]">Réservé</Badge>
+                      ) : (
+                        <Badge className="bg-[rgba(52,211,153,0.10)] text-emerald-600 border border-[rgba(52,211,153,0.20)] hover:bg-[rgba(52,211,153,0.15)]">Disponible</Badge>
                       )}
                     </td>
                   </tr>
