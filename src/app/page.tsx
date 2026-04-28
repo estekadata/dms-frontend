@@ -95,21 +95,13 @@ export default function LoginPage() {
               </div>
             )}
 
-            <div className="flex gap-3 pt-2">
+            <div className="pt-2">
               <Button
                 type="submit"
                 disabled={loading}
-                className="flex-1 bg-brand hover:bg-brand/80 text-white rounded-[11px] h-10 font-semibold"
+                className="w-full bg-brand hover:bg-brand/80 text-white rounded-[11px] h-10 font-semibold"
               >
                 {loading ? "Connexion..." : "Se connecter"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1 rounded-[11px] h-10"
-                onClick={() => router.push("/vhu")}
-              >
-                Centres VHU
               </Button>
             </div>
           </form>
