@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
+import { getSession } from "@/lib/auth";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -9,27 +9,35 @@ function getSupabaseAdmin() {
   return createClient(supabaseUrl, supabaseServiceKey);
 }
 
-async function verifyAdmin(req: NextRequest): Promise<{ ok: boolean; error?: string }> {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("dms_session")?.value;
+async function verifyAdmin(): Promise<{ ok: boolean; error?: string }> {
+  const session = await getSession();
+  if (!session) return { ok: false, error: "Non authentifié" };
+  if (session.role !== "super_admin") {
+    return { ok: false, error: "Accès refusé : rôle super_admin requis" };
+  }
+  return { ok: true };
+}
 
-  if (!sessionCookie) {
-    return { ok: false, error: "Non authentifie" };
+export async function GET() {
+  const auth = await verifyAdmin();
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: 403 });
   }
 
-  try {
-    const session = JSON.parse(sessionCookie);
-    if (!session.role || session.role !== "super_admin") {
-      return { ok: false, error: "Acces refuse : role super_admin requis" };
-    }
-    return { ok: true };
-  } catch {
-    return { ok: false, error: "Session invalide" };
+  const db = getSupabaseAdmin();
+  const { data, error } = await db
+    .from("dms_users")
+    .select("id, email, nom, role, actif, created_at, last_login")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  return NextResponse.json({ users: data || [] });
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await verifyAdmin(req);
+  const auth = await verifyAdmin();
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: 403 });
   }
@@ -45,26 +53,27 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Email et mot de passe requis" }, { status: 400 });
       }
 
+      const validRoles = ["super_admin", "admin", "vhu"];
+      const finalRole = validRoles.includes(role) ? role : "admin";
+
       const db = getSupabaseAdmin();
 
-      // Check if user already exists
       const { data: existing } = await db
         .from("dms_users")
         .select("id")
-        .eq("email", email.toLowerCase())
+        .eq("email", email.toLowerCase().trim())
         .maybeSingle();
 
       if (existing) {
-        return NextResponse.json({ error: "Un utilisateur avec cet email existe deja" }, { status: 409 });
+        return NextResponse.json({ error: "Un utilisateur avec cet email existe déjà" }, { status: 409 });
       }
 
-      // Insert user
       const { data, error } = await db
         .from("dms_users")
         .insert({
-          email: email.toLowerCase(),
+          email: email.toLowerCase().trim(),
           nom: nom || null,
-          role: role || "utilisateur",
+          role: finalRole,
           password_hash,
           actif: true,
           created_at: new Date().toISOString(),
@@ -80,13 +89,14 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ error: "Action inconnue" }, { status: 400 });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Erreur serveur" }, { status: 500 });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Erreur serveur";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
 export async function PATCH(req: NextRequest) {
-  const auth = await verifyAdmin(req);
+  const auth = await verifyAdmin();
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: 403 });
   }
@@ -132,7 +142,28 @@ export async function PATCH(req: NextRequest) {
     }
 
     return NextResponse.json({ error: "Action inconnue" }, { status: 400 });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Erreur serveur" }, { status: 500 });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Erreur serveur";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
+}
+
+export async function DELETE(req: NextRequest) {
+  const auth = await verifyAdmin();
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: 403 });
+  }
+
+  const { searchParams } = new URL(req.url);
+  const userId = searchParams.get("id");
+  if (!userId) {
+    return NextResponse.json({ error: "id requis" }, { status: 400 });
+  }
+
+  const db = getSupabaseAdmin();
+  const { error } = await db.from("dms_users").delete().eq("id", userId);
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ success: true });
 }
