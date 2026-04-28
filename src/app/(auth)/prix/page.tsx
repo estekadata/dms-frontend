@@ -46,7 +46,15 @@ export default function PrixPage() {
       .from("tbl_prix_moteurs")
       .upsert({ code_moteur: manualCode.toUpperCase(), prix_propose: parseFloat(manualPrix), date_maj: new Date().toISOString() }, { onConflict: "code_moteur" });
     if (error) {
-      alert(`Erreur : ${error.message}`);
+      const isMissingTable = /schema cache|does not exist|relation .* does not exist/i.test(error.message);
+      if (isMissingTable) {
+        alert(
+          "La table tbl_prix_moteurs n'existe pas encore dans Supabase.\n\n" +
+            "Va dans Supabase → SQL Editor → colle le contenu du fichier create_tbl_prix_moteurs.sql (à la racine du repo dms-frontend) → Run."
+        );
+      } else {
+        alert(`Erreur : ${error.message}`);
+      }
     } else {
       setManualCode("");
       setManualPrix("");

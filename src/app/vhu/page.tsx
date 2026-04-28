@@ -244,10 +244,14 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
     setFreeSubmitting(false);
   }
 
-  function handleLogout() {
+  async function handleLogout() {
     sessionStorage.removeItem("vhu_centre_id");
     sessionStorage.removeItem("vhu_centre_name");
-    window.location.reload();
+    // Also clear the JWT session for accounts created via /admin/utilisateurs
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {}
+    window.location.href = "/";
   }
 
   const urgencyBadge = (u: number) => {
@@ -509,16 +513,69 @@ export default function VhuPage() {
   const [authed, setAuthed] = useState(false);
   const [centreId, setCentreId] = useState("");
   const [centreName, setCentreName] = useState("");
+  const [bootstrapping, setBootstrapping] = useState(true);
 
   useEffect(() => {
-    const storedId = sessionStorage.getItem("vhu_centre_id");
-    const storedName = sessionStorage.getItem("vhu_centre_name");
-    if (storedId && storedName) {
-      setCentreId(storedId);
-      setCentreName(storedName);
-      setAuthed(true);
-    }
+    let cancelled = false;
+    (async () => {
+      // 1. Check for an existing JWT session (admin-created VHU account)
+      try {
+        const res = await fetch("/api/auth/me", { cache: "no-store" });
+        if (res.ok) {
+          const { user } = await res.json();
+          if (user && user.role === "vhu" && !cancelled) {
+            const name = (user.nom && user.nom.trim()) || user.email || `Centre #${user.id}`;
+            const { data: existing } = await supabase
+              .from("breakers")
+              .select("id, name")
+              .eq("name", name)
+              .maybeSingle();
+            let id: string;
+            if (existing) {
+              id = existing.id;
+            } else {
+              const { data: inserted } = await supabase
+                .from("breakers")
+                .insert({ name })
+                .select("id")
+                .single();
+              if (!inserted) {
+                setBootstrapping(false);
+                return;
+              }
+              id = inserted.id;
+            }
+            sessionStorage.setItem("vhu_centre_id", id);
+            sessionStorage.setItem("vhu_centre_name", name);
+            setCentreId(id);
+            setCentreName(name);
+            setAuthed(true);
+            setBootstrapping(false);
+            return;
+          }
+        }
+      } catch {
+        // ignore — fallback to legacy AuthScreen
+      }
+
+      // 2. Legacy fallback: previous session in sessionStorage
+      const storedId = sessionStorage.getItem("vhu_centre_id");
+      const storedName = sessionStorage.getItem("vhu_centre_name");
+      if (storedId && storedName && !cancelled) {
+        setCentreId(storedId);
+        setCentreName(storedName);
+        setAuthed(true);
+      }
+      if (!cancelled) setBootstrapping(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  if (bootstrapping) {
+    return <div className="min-h-screen flex items-center justify-center text-gray-400">Chargement...</div>;
+  }
 
   if (!authed) {
     return (
