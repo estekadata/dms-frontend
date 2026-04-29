@@ -109,36 +109,49 @@ export default function FournisseurProfilePage({
 
       const recIds = (recRows || []).map((r: any) => r.n_reception).filter(Boolean) as number[];
 
-      // 3. Moteurs liés à ces réceptions (via v_moteurs_dispo pour avoir le code)
-      const { data: motRows } = recIds.length
-        ? await supabase
+      // 3. Moteurs liés à ces réceptions — paginé (limite serveur PostgREST ~5000/req)
+      const motRows: any[] = [];
+      if (recIds.length) {
+        const PAGE = 1000;
+        let offset = 0;
+        while (true) {
+          const { data, error } = await supabase
             .from("v_moteurs_dispo")
             .select("n_moteur, nom_type_moteur, code_moteur, num_reception, prix_achat_moteur")
             .in("num_reception", recIds)
-            .limit(10000)
-        : { data: [] as any[] };
+            .range(offset, offset + PAGE - 1);
+          if (error || !data || data.length === 0) break;
+          motRows.push(...data);
+          if (data.length < PAGE) break;
+          offset += PAGE;
+          if (offset > 100000) break; // safety
+        }
+      }
 
-      const motorIds = (motRows || []).map((m: any) => m.n_moteur).filter(Boolean) as number[];
+      const motorIds = motRows.map((m: any) => m.n_moteur).filter(Boolean) as number[];
 
-      // 4. Prix de vente pour ces moteurs
-      const { data: ventes } = motorIds.length
-        ? await supabase
+      // 4. Prix de vente pour ces moteurs — chunked IN (URL trop longue sinon)
+      const venteByMoteur: Record<number, number | null> = {};
+      if (motorIds.length) {
+        const CHUNK = 500;
+        for (let i = 0; i < motorIds.length; i += CHUNK) {
+          const slice = motorIds.slice(i, i + CHUNK);
+          const { data: ventes } = await supabase
             .from("tbl_expeditions_moteurs")
             .select("n_moteur, prix_vente_moteur, date_validation")
-            .in("n_moteur", motorIds)
-        : { data: [] as any[] };
-
-      const venteByMoteur: Record<number, number | null> = {};
-      (ventes || []).forEach((v: any) => {
-        venteByMoteur[v.n_moteur] = v.prix_vente_moteur;
-      });
+            .in("n_moteur", slice);
+          (ventes || []).forEach((v: any) => {
+            venteByMoteur[v.n_moteur] = v.prix_vente_moteur;
+          });
+        }
+      }
 
       const recDateById: Record<number, string | null> = {};
       (recRows || []).forEach((r: any) => {
         recDateById[r.n_reception] = r.date_achat;
       });
 
-      const allMoteurs: Moteur[] = ((motRows || []) as any[]).map((m) => ({
+      const allMoteurs: Moteur[] = motRows.map((m: any) => ({
         n_moteur: m.n_moteur,
         code: m.nom_type_moteur || m.code_moteur || `Moteur #${m.n_moteur}`,
         num_reception: m.num_reception,
@@ -157,7 +170,7 @@ export default function FournisseurProfilePage({
         }
       });
 
-      const enrichedReceptions: Reception[] = ((recRows || []) as any[]).map((r) => ({
+      const enrichedReceptions: Reception[] = ((recRows || []) as any[]).map((r: any) => ({
         n_reception: r.n_reception,
         date_achat: r.date_achat,
         montant_ht: r.montant_ht,
