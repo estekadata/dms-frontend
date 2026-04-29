@@ -1,9 +1,11 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -40,10 +42,12 @@ export default function ReceptionsPage() {
   const [dateTo, setDateTo] = useState("");
   const [receptions, setReceptions] = useState<Reception[]>([]);
   const [fournisseurIdByName, setFournisseurIdByName] = useState<Record<string, number>>({});
+  const [draftIds, setDraftIds] = useState<Set<number>>(new Set());
   const [selected, setSelected] = useState<Reception | null>(null);
   const [details, setDetails] = useState<Detail[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [validatingId, setValidatingId] = useState<number | null>(null);
 
   // Charge la map nom_fournisseur → n_fournisseur une fois pour les liens cliquables
   useEffect(() => {
@@ -58,6 +62,16 @@ export default function ReceptionsPage() {
       });
       setFournisseurIdByName(map);
     })();
+  }, []);
+
+  const reloadDrafts = useCallback(async () => {
+    // Récupère les n_reception encore en brouillon (reception_terminee=false)
+    const { data } = await supabase
+      .from("tbl_receptions")
+      .select("n_reception")
+      .eq("reception_terminee", false)
+      .limit(5000);
+    setDraftIds(new Set(((data as any[]) || []).map((r) => r.n_reception)));
   }, []);
 
   useEffect(() => {
@@ -75,10 +89,26 @@ export default function ReceptionsPage() {
         return q;
       });
       setReceptions(data);
+      await reloadDrafts();
       setLoading(false);
     }
     load();
-  }, [search, dateFrom, dateTo]);
+  }, [search, dateFrom, dateTo, reloadDrafts]);
+
+  async function validerReception(n_reception: number) {
+    if (!confirm(`Valider la réception n°${n_reception} ? Elle ne sera plus modifiable comme brouillon.`)) return;
+    setValidatingId(n_reception);
+    const { error } = await supabase
+      .from("tbl_receptions")
+      .update({ reception_terminee: true })
+      .eq("n_reception", n_reception);
+    setValidatingId(null);
+    if (error) {
+      alert(`Erreur : ${error.message}`);
+      return;
+    }
+    await reloadDrafts();
+  }
 
   async function openDetail(rec: Reception) {
     setSelected(rec);
@@ -97,7 +127,14 @@ export default function ReceptionsPage() {
 
   return (
     <div>
-      <PageHeader title="Réceptions" description="Gestion des arrivages fournisseurs" />
+      <div className="flex items-start justify-between mb-2">
+        <PageHeader title="Réceptions" description="Gestion des arrivages fournisseurs" />
+        <Link href="/receptions/nouvelle">
+          <Button className="bg-brand hover:bg-brand/80 text-white">
+            <Plus size={14} className="mr-1" /> Nouvelle réception
+          </Button>
+        </Link>
+      </div>
 
       <div className="grid grid-cols-3 gap-4 mb-6">
         <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Réceptions</p><p className="text-2xl font-bold text-brand">{receptions.length}</p></CardContent></Card>
@@ -182,7 +219,28 @@ export default function ReceptionsPage() {
                         <td className="px-4 py-3 text-center text-text-dim">{r.nb_moteurs ?? "—"}</td>
                         <td className="px-4 py-3 text-right tabular-nums text-text-dim">{r.montant_total ? `${Math.round(r.montant_total).toLocaleString("fr-FR")} €` : "—"}</td>
                         <td className="px-4 py-3 text-center">
-                          <Badge className="bg-[rgba(52,211,153,0.10)] text-emerald-600 border border-[rgba(52,211,153,0.20)] hover:bg-[rgba(52,211,153,0.15)]">{r.statut || "Reçu"}</Badge>
+                          {draftIds.has(r.n_reception) ? (
+                            <div className="flex items-center justify-center gap-2">
+                              <Badge className="bg-[rgba(96,165,250,0.10)] text-blue-600 border border-[rgba(96,165,250,0.20)] hover:bg-[rgba(96,165,250,0.15)]">
+                                Brouillon
+                              </Badge>
+                              <Button
+                                size="xs"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  validerReception(r.n_reception);
+                                }}
+                                disabled={validatingId === r.n_reception}
+                              >
+                                {validatingId === r.n_reception ? "..." : "Valider"}
+                              </Button>
+                            </div>
+                          ) : (
+                            <Badge className="bg-[rgba(52,211,153,0.10)] text-emerald-600 border border-[rgba(52,211,153,0.20)] hover:bg-[rgba(52,211,153,0.15)]">
+                              {r.statut || "Reçu"}
+                            </Badge>
+                          )}
                         </td>
                       </tr>
                     );
