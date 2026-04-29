@@ -5,7 +5,7 @@ SELECT json_build_object(
   'mot_total', (SELECT COUNT(*)::int FROM v_moteurs_dispo),
   'bv_dispo', (SELECT COUNT(*)::int FROM v_boites_dispo WHERE est_disponible = 1),
   'bv_total', (SELECT COUNT(*)::int FROM v_boites_dispo),
-  'mot_reserves', (SELECT COUNT(*)::int FROM tbl_moteurs WHERE resa_client_moteur IS NOT NULL AND TRIM(resa_client_moteur) <> '' AND n_expedition IS NULL AND (archiver IS NULL OR archiver = false)),
+  'mot_reserves', (SELECT COUNT(*)::int FROM v_moteurs_dispo WHERE est_disponible = 1 AND resa_client_moteur IS NOT NULL AND TRIM(resa_client_moteur) <> ''),
   'bv_reserves', (SELECT COUNT(*)::int FROM tbl_boites WHERE resa_client_bv IS NOT NULL AND TRIM(resa_client_bv) <> '' AND (vendu IS NULL OR vendu = false) AND stock = true),
   'ventes_mois', (SELECT COUNT(*)::int FROM tbl_expeditions_moteurs WHERE date_validation >= date_trunc('month', NOW()) AND prix_vente_moteur IS NOT NULL),
   'ca_mois', COALESCE((SELECT SUM(prix_vente_moteur)::float FROM tbl_expeditions_moteurs WHERE date_validation >= date_trunc('month', NOW()) AND prix_vente_moteur IS NOT NULL), 0),

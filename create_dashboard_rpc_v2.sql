@@ -31,7 +31,8 @@ BEGIN
     'mot_total', (SELECT COUNT(*)::int FROM v_moteurs_dispo),
     'bv_dispo', (SELECT COUNT(*)::int FROM v_boites_dispo WHERE est_disponible = 1),
     'bv_total', (SELECT COUNT(*)::int FROM v_boites_dispo),
-    'mot_reserves', (SELECT COUNT(*)::int FROM tbl_moteurs WHERE resa_client_moteur IS NOT NULL AND TRIM(resa_client_moteur) <> '' AND n_expedition IS NULL AND (archiver IS NULL OR archiver = false)),
+    -- Réservés = encore disponibles (vue exclut archivés + n_expedition + lignes dans tbl_expeditions_moteurs) ET resa client non vide
+    'mot_reserves', (SELECT COUNT(*)::int FROM v_moteurs_dispo WHERE est_disponible = 1 AND resa_client_moteur IS NOT NULL AND TRIM(resa_client_moteur) <> ''),
     'bv_reserves', (SELECT COUNT(*)::int FROM tbl_boites WHERE resa_client_bv IS NOT NULL AND TRIM(resa_client_bv) <> '' AND (vendu IS NULL OR vendu = false) AND stock = true),
 
     -- Ventes du mois cible
