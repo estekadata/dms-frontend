@@ -93,6 +93,9 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [plaqueResults, setPlaqueResults] = useState<any[] | null>(null);
+  // Quand l'utilisateur clique "Voir besoins" sur une plaque, on verrouille
+  // le filtre sur le code_moteur exact pour ne ressortir qu'une seule ligne.
+  const [lockedCode, setLockedCode] = useState<string | null>(null);
   const [expandedBesoin, setExpandedBesoin] = useState<string | null>(null);
   const [todayCount, setTodayCount] = useState(0);
   const [sortKey, setSortKey] = useState<SortKey>("urgence");
@@ -169,7 +172,11 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
     const q = search.trim().toLowerCase();
     let list = besoins;
 
-    if (q && !isPlateFormat(search)) {
+    if (lockedCode) {
+      // Verrouillage plaque : match exact sur code_moteur, on ignore le search
+      const lc = lockedCode.toLowerCase();
+      list = list.filter((b) => b.code_moteur?.toLowerCase() === lc);
+    } else if (q && !isPlateFormat(search)) {
       list = list.filter((b) =>
         b.code_moteur?.toLowerCase().includes(q) ||
         b.marque?.toLowerCase().includes(q) ||
@@ -186,7 +193,7 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
       }
       return sortDir === "asc" ? (av as number) - (bv as number) : (bv as number) - (av as number);
     });
-  }, [besoins, search, sortKey, sortDir]);
+  }, [besoins, search, sortKey, sortDir, lockedCode]);
 
   const paginated = filtered.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
@@ -320,7 +327,12 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
                         <Button
                           size="sm"
                           className="ml-auto bg-[#C41E3A] hover:bg-[#8B1A2B] text-white"
-                          onClick={() => { setSearch(p.code_moteur); setPlaqueResults(null); }}
+                          onClick={() => {
+                            setLockedCode(p.code_moteur);
+                            setSearch("");
+                            setPlaqueResults(null);
+                            setPage(0);
+                          }}
                         >
                           Voir besoins
                         </Button>
@@ -338,10 +350,17 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
           <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
             <h3 className="font-semibold text-gray-700">
               Moteurs recherches ({filtered.length})
-              {search && !isPlateFormat(search) && <span className="text-sm font-normal text-gray-400 ml-2">filtre : &quot;{search}&quot;</span>}
+              {lockedCode && (
+                <span className="text-sm font-normal text-blue-700 ml-2">
+                  plaque verrouillee : <span className="font-mono font-semibold">{lockedCode}</span>
+                </span>
+              )}
+              {!lockedCode && search && !isPlateFormat(search) && (
+                <span className="text-sm font-normal text-gray-400 ml-2">filtre : &quot;{search}&quot;</span>
+              )}
             </h3>
-            {search && (
-              <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setPlaqueResults(null); }}>
+            {(search || lockedCode) && (
+              <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setLockedCode(null); setPlaqueResults(null); }}>
                 Effacer filtre
               </Button>
             )}
