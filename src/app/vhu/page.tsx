@@ -99,6 +99,8 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
   // Offres deja soumises par ce centre (pending / accepted / rejected ; on cache delivered)
   const [myOffers, setMyOffers] = useState<any[]>([]);
   const [delivering, setDelivering] = useState<number | null>(null);
+  // Onglet courant
+  const [view, setView] = useState<"recherche" | "offres">("recherche");
   const [expandedBesoin, setExpandedBesoin] = useState<string | null>(null);
   const [todayCount, setTodayCount] = useState(0);
   const [sortKey, setSortKey] = useState<SortKey>("urgence");
@@ -158,6 +160,23 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
     setDelivering(null);
     if (error) {
       alert("Erreur livraison : " + error.message);
+      return;
+    }
+    loadMyOffers();
+  }
+
+  // Effacer une offre (uniquement pending = annuler, ou rejected = nettoyer la liste)
+  async function dismissOffer(offerId: number, status: string) {
+    const verb = status === "pending" ? "annuler" : "effacer";
+    if (!confirm(`Confirmer ${verb} cette offre ?`)) return;
+    const { error } = await supabase
+      .from("breaker_click_offers")
+      .delete()
+      .eq("id", offerId)
+      .eq("breaker_id", parseInt(centreId, 10))
+      .in("status", ["pending", "rejected"]);
+    if (error) {
+      alert("Erreur : " + error.message);
       return;
     }
     loadMyOffers();
@@ -326,6 +345,36 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-6">
+        {/* Tabs */}
+        <div className="flex gap-1 mb-6 border-b border-gray-200">
+          <button
+            onClick={() => setView("recherche")}
+            className={`px-5 py-3 text-sm font-medium transition border-b-2 -mb-px ${
+              view === "recherche"
+                ? "border-[#C41E3A] text-[#C41E3A]"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Recherche
+          </button>
+          <button
+            onClick={() => setView("offres")}
+            className={`px-5 py-3 text-sm font-medium transition border-b-2 -mb-px ${
+              view === "offres"
+                ? "border-[#C41E3A] text-[#C41E3A]"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Mes offres
+            {myOffers.length > 0 && (
+              <span className="ml-2 inline-block px-2 py-0.5 rounded-full bg-[#C41E3A] text-white text-xs font-semibold">
+                {myOffers.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {view === "recherche" && (<>
         {/* Search bar */}
         <div className="mb-6">
           <div className="flex gap-2">
@@ -377,75 +426,6 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
             </div>
           )}
         </div>
-
-        {/* Mes offres */}
-        {myOffers.length > 0 && (
-          <div className="mb-6 bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b bg-gray-50">
-              <h3 className="font-semibold text-gray-700">
-                Mes offres ({myOffers.length})
-                <span className="text-xs font-normal text-gray-400 ml-2">
-                  en attente, acceptees ou refusees
-                </span>
-              </h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-gray-500 border-b">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-xs uppercase">Code moteur</th>
-                    <th className="px-3 py-2 text-left text-xs uppercase">Marque</th>
-                    <th className="px-3 py-2 text-right text-xs uppercase">Prix</th>
-                    <th className="px-3 py-2 text-center text-xs uppercase">Qte</th>
-                    <th className="px-3 py-2 text-center text-xs uppercase">Statut</th>
-                    <th className="px-3 py-2 text-center text-xs uppercase">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {myOffers.map((o) => {
-                    const statusClass =
-                      o.status === "accepted" ? "bg-emerald-100 text-emerald-700" :
-                      o.status === "rejected" ? "bg-red-100 text-red-700" :
-                      "bg-amber-100 text-amber-700";
-                    const statusLabel =
-                      o.status === "accepted" ? "Acceptee" :
-                      o.status === "rejected" ? "Refusee" :
-                      "En attente";
-                    return (
-                      <tr key={o.id} className="hover:bg-gray-50">
-                        <td className="px-3 py-2 font-semibold">{o.code_moteur}</td>
-                        <td className="px-3 py-2 text-gray-600">{o.marque || "—"}</td>
-                        <td className="px-3 py-2 text-right font-medium">
-                          {o.prix_demande != null ? `${o.prix_demande} €` : "—"}
-                        </td>
-                        <td className="px-3 py-2 text-center">{o.qty ?? 1}</td>
-                        <td className="px-3 py-2 text-center">
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${statusClass}`}>
-                            {statusLabel}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          {o.status === "accepted" ? (
-                            <Button
-                              size="sm"
-                              disabled={delivering === o.id}
-                              onClick={() => deliverOffer(o.id)}
-                              className="bg-blue-600 hover:bg-blue-700 text-white"
-                            >
-                              {delivering === o.id ? "..." : "Livrer"}
-                            </Button>
-                          ) : (
-                            <span className="text-xs text-gray-400">—</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
 
         {/* Besoins table */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
@@ -624,6 +604,87 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
             </Button>
           </CardContent>
         </Card>
+        </>)}
+
+        {view === "offres" && (
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b bg-gray-50">
+              <h3 className="font-semibold text-gray-700">
+                Mes offres ({myOffers.length})
+                <span className="text-xs font-normal text-gray-400 ml-2">
+                  en attente, acceptees ou refusees
+                </span>
+              </h3>
+            </div>
+            {myOffers.length === 0 ? (
+              <p className="text-center py-12 text-gray-400 text-sm">
+                Aucune offre. Va sur l&apos;onglet <span className="font-semibold">Recherche</span> et clique &quot;Je l&apos;ai&quot; sur un moteur.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-gray-500 border-b">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs uppercase">Code moteur</th>
+                      <th className="px-3 py-2 text-left text-xs uppercase">Marque</th>
+                      <th className="px-3 py-2 text-right text-xs uppercase">Prix</th>
+                      <th className="px-3 py-2 text-center text-xs uppercase">Qte</th>
+                      <th className="px-3 py-2 text-center text-xs uppercase">Statut</th>
+                      <th className="px-3 py-2 text-center text-xs uppercase">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {myOffers.map((o) => {
+                      const statusClass =
+                        o.status === "accepted" ? "bg-emerald-100 text-emerald-700" :
+                        o.status === "rejected" ? "bg-red-100 text-red-700" :
+                        "bg-amber-100 text-amber-700";
+                      const statusLabel =
+                        o.status === "accepted" ? "Acceptee" :
+                        o.status === "rejected" ? "Refusee" :
+                        "En attente";
+                      return (
+                        <tr key={o.id} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 font-semibold">{o.code_moteur}</td>
+                          <td className="px-3 py-2 text-gray-600">{o.marque || "—"}</td>
+                          <td className="px-3 py-2 text-right font-medium">
+                            {o.prix_demande != null ? `${o.prix_demande} €` : "—"}
+                          </td>
+                          <td className="px-3 py-2 text-center">{o.qty ?? 1}</td>
+                          <td className="px-3 py-2 text-center">
+                            <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${statusClass}`}>
+                              {statusLabel}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            {o.status === "accepted" ? (
+                              <Button
+                                size="sm"
+                                disabled={delivering === o.id}
+                                onClick={() => deliverOffer(o.id)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                              >
+                                {delivering === o.id ? "..." : "Livrer"}
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => dismissOffer(o.id, o.status)}
+                              >
+                                {o.status === "pending" ? "Annuler" : "Effacer"}
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
