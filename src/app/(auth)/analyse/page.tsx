@@ -152,29 +152,60 @@ export default function AnalysePage() {
         const totalVendus = monthsArr.reduce((s, m) => s + m.vendus, 0);
         setData({ months: monthsArr, totalRecus, totalVendus });
       } else {
-        // Récupérer toutes les expéditions (avec pagination)
-        const topSales = await fetchAll((from, to) =>
-          supabase
-            .from("tbl_expeditions_moteurs")
-            .select("n_moteur, prix_vente_moteur")
-            .not("n_moteur", "is", null)
-            .range(from, to)
+        // Offres : top codes moteurs vendus + CA — sur les 24 derniers mois pour
+        // garder un volume raisonnable. Anciennement: tout l'historique → 60+
+        // requêtes séquentielles → page bloquée sur "Chargement...".
+        const cutoff = new Date();
+        cutoff.setMonth(cutoff.getMonth() - 24);
+        const cutoffIso = cutoff.toISOString();
+
+        const topSales = await fetchAll(
+          (from, to) =>
+            supabase
+              .from("tbl_expeditions_moteurs")
+              .select("n_moteur, prix_vente_moteur")
+              .not("n_moteur", "is", null)
+              .gte("date_validation", cutoffIso)
+              .range(from, to),
+          20000
         );
 
         const motorIds = [...new Set((topSales || []).map((e: any) => e.n_moteur).filter(Boolean))] as number[];
+
+        // Charge la table de référence des types (légère, ~500 lignes max)
+        const { data: types } = await supabase
+          .from("tbl_types_moteurs")
+          .select("n_type_moteur, nom_type_moteur")
+          .limit(2000);
+        const typeNameById: Record<number, string> = {};
+        (types || []).forEach((t: any) => {
+          typeNameById[t.n_type_moteur] = t.nom_type_moteur || "";
+        });
+
+        // Résolution des codes moteurs en parallèle (chunks de 500, 5 en // max)
         const codeByMotor: Record<number, string> = {};
-        // Batch IN queries pour éviter URL trop longues
         const batchSize = 500;
+        const concurrency = 5;
+        const allBatches: number[][] = [];
         for (let i = 0; i < motorIds.length; i += batchSize) {
-          const batch = motorIds.slice(i, i + batchSize);
-          const { data: motors } = await supabase
-            .from("v_moteurs_dispo")
-            .select("n_moteur, nom_type_moteur")
-            .in("n_moteur", batch);
-          (motors || []).forEach((m: any) => {
-            const raw = (m.nom_type_moteur || "").trim();
-            const code = raw.split(/[\s\-]+/)[0].toUpperCase();
-            if (code && code.length >= 2) codeByMotor[m.n_moteur] = code;
+          allBatches.push(motorIds.slice(i, i + batchSize));
+        }
+        for (let i = 0; i < allBatches.length; i += concurrency) {
+          const slice = allBatches.slice(i, i + concurrency);
+          const results = await Promise.all(
+            slice.map((batch) =>
+              supabase
+                .from("tbl_moteurs")
+                .select("n_moteur, n_type_moteur, code_moteur")
+                .in("n_moteur", batch)
+            )
+          );
+          results.forEach(({ data: motors }) => {
+            (motors || []).forEach((m: any) => {
+              const raw = (typeNameById[m.n_type_moteur] || m.code_moteur || "").trim();
+              const code = raw.split(/[\s\-]+/)[0].toUpperCase();
+              if (code && code.length >= 2) codeByMotor[m.n_moteur] = code;
+            });
           });
         }
 
@@ -296,7 +327,7 @@ export default function AnalysePage() {
         </div>
       ) : tab === "Offres" && data && data.topOffres ? (
         <div className="bg-surface border border-border rounded-[14px] p-6">
-          <ChartHeader title="Top 15 références les plus vendues" total={data.totalVentes ?? 0} unit="ventes" />
+          <ChartHeader title="Top 15 références les plus vendues — 24 derniers mois" total={data.totalVentes ?? 0} unit="ventes" />
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={data.topOffres}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
