@@ -100,7 +100,7 @@ export default function OffresAdminPage() {
 
   return (
     <div>
-      <PageHeader title="Offres VHU" subtitle="Propositions des centres VHU en attente de validation" />
+      <PageHeader title="Offres VHU" description="Propositions des centres VHU en attente de validation" />
 
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-text-dim">
