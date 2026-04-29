@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Input } from "@/components/ui/input";
@@ -38,10 +39,26 @@ export default function ReceptionsPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [receptions, setReceptions] = useState<Reception[]>([]);
+  const [fournisseurIdByName, setFournisseurIdByName] = useState<Record<string, number>>({});
   const [selected, setSelected] = useState<Reception | null>(null);
   const [details, setDetails] = useState<Detail[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
+
+  // Charge la map nom_fournisseur → n_fournisseur une fois pour les liens cliquables
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("tbl_fournisseurs")
+        .select("n_fournisseur, nom_fournisseur")
+        .limit(5000);
+      const map: Record<string, number> = {};
+      (data || []).forEach((f: any) => {
+        if (f.nom_fournisseur) map[f.nom_fournisseur] = f.n_fournisseur;
+      });
+      setFournisseurIdByName(map);
+    })();
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -139,22 +156,37 @@ export default function ReceptionsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {receptions.map((r) => (
-                    <tr
-                      key={r.n_reception}
-                      onClick={() => openDetail(r)}
-                      className={`hover:bg-surface-hover cursor-pointer transition-colors ${selected?.n_reception === r.n_reception ? "bg-brand-soft" : ""}`}
-                    >
-                      <td className="px-4 py-3 font-mono text-xs text-text-muted">{r.n_reception}</td>
-                      <td className="px-4 py-3 text-text-dim">{r.date_reception ? new Date(r.date_reception).toLocaleDateString("fr-FR") : "—"}</td>
-                      <td className="px-4 py-3 font-medium text-foreground">{r.fournisseur || "—"}</td>
-                      <td className="px-4 py-3 text-center text-text-dim">{r.nb_moteurs ?? "—"}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-text-dim">{r.montant_total ? `${Math.round(r.montant_total).toLocaleString("fr-FR")} €` : "—"}</td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge className="bg-[rgba(52,211,153,0.10)] text-emerald-600 border border-[rgba(52,211,153,0.20)] hover:bg-[rgba(52,211,153,0.15)]">{r.statut || "Reçu"}</Badge>
-                      </td>
-                    </tr>
-                  ))}
+                  {receptions.map((r) => {
+                    const fId = r.fournisseur ? fournisseurIdByName[r.fournisseur] : undefined;
+                    return (
+                      <tr
+                        key={r.n_reception}
+                        onClick={() => openDetail(r)}
+                        className={`hover:bg-surface-hover cursor-pointer transition-colors ${selected?.n_reception === r.n_reception ? "bg-brand-soft" : ""}`}
+                      >
+                        <td className="px-4 py-3 font-mono text-xs text-text-muted">{r.n_reception}</td>
+                        <td className="px-4 py-3 text-text-dim">{r.date_reception ? new Date(r.date_reception).toLocaleDateString("fr-FR") : "—"}</td>
+                        <td className="px-4 py-3 font-medium text-foreground">
+                          {r.fournisseur && fId ? (
+                            <Link
+                              href={`/fournisseurs/${fId}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-brand hover:underline"
+                            >
+                              {r.fournisseur}
+                            </Link>
+                          ) : (
+                            r.fournisseur || "—"
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center text-text-dim">{r.nb_moteurs ?? "—"}</td>
+                        <td className="px-4 py-3 text-right tabular-nums text-text-dim">{r.montant_total ? `${Math.round(r.montant_total).toLocaleString("fr-FR")} €` : "—"}</td>
+                        <td className="px-4 py-3 text-center">
+                          <Badge className="bg-[rgba(52,211,153,0.10)] text-emerald-600 border border-[rgba(52,211,153,0.20)] hover:bg-[rgba(52,211,153,0.15)]">{r.statut || "Reçu"}</Badge>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}
@@ -167,7 +199,20 @@ export default function ReceptionsPage() {
             <div className="flex justify-between items-start mb-4">
               <div>
                 <h3 className="font-bold text-foreground">Réception #{selected.n_reception}</h3>
-                <p className="text-sm text-text-dim">{selected.fournisseur} — {selected.date_reception ? new Date(selected.date_reception).toLocaleDateString("fr-FR") : ""}</p>
+                <p className="text-sm text-text-dim">
+                  {selected.fournisseur && fournisseurIdByName[selected.fournisseur] ? (
+                    <Link
+                      href={`/fournisseurs/${fournisseurIdByName[selected.fournisseur]}`}
+                      className="text-brand hover:underline"
+                    >
+                      {selected.fournisseur}
+                    </Link>
+                  ) : (
+                    selected.fournisseur || "—"
+                  )}
+                  {" — "}
+                  {selected.date_reception ? new Date(selected.date_reception).toLocaleDateString("fr-FR") : ""}
+                </p>
               </div>
               <button onClick={() => setSelected(null)} className="text-text-muted hover:text-foreground text-lg transition-colors">✕</button>
             </div>
