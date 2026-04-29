@@ -96,6 +96,9 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
   // Quand l'utilisateur clique "Voir besoins" sur une plaque, on verrouille
   // le filtre sur le code_moteur exact pour ne ressortir qu'une seule ligne.
   const [lockedCode, setLockedCode] = useState<string | null>(null);
+  // Offres deja soumises par ce centre (pending / accepted / rejected ; on cache delivered)
+  const [myOffers, setMyOffers] = useState<any[]>([]);
+  const [delivering, setDelivering] = useState<number | null>(null);
   const [expandedBesoin, setExpandedBesoin] = useState<string | null>(null);
   const [todayCount, setTodayCount] = useState(0);
   const [sortKey, setSortKey] = useState<SortKey>("urgence");
@@ -130,6 +133,35 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
     }
     loadStats();
   }, [centreId]);
+
+  // Mes offres (toutes sauf 'delivered')
+  const loadMyOffers = useCallback(async () => {
+    const { data } = await supabase
+      .from("breaker_click_offers")
+      .select("id, code_moteur, marque, energie, prix_demande, qty, status, created_at, accepted_at, rejected_at")
+      .eq("breaker_id", centreId)
+      .neq("status", "delivered")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    setMyOffers(data || []);
+  }, [centreId]);
+
+  useEffect(() => { loadMyOffers(); }, [loadMyOffers]);
+
+  async function deliverOffer(offerId: number) {
+    if (!confirm("Confirmer que ce moteur a bien ete livre ?")) return;
+    setDelivering(offerId);
+    const { error } = await supabase.rpc("vhu_deliver_offer", {
+      p_offer_id: offerId,
+      p_breaker_id: parseInt(centreId, 10),
+    });
+    setDelivering(null);
+    if (error) {
+      alert("Erreur livraison : " + error.message);
+      return;
+    }
+    loadMyOffers();
+  }
 
   // Load ALL besoins (no pagination server-side, we paginate client-side)
   useEffect(() => {
@@ -227,6 +259,7 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
       setOfferSuccess(besoin.code_moteur);
       setOfferPrix(""); setOfferQty("1"); setOfferNote("");
       setTodayCount((c) => c + 1);
+      loadMyOffers();
       setTimeout(() => { setOfferSuccess(null); setExpandedBesoin(null); }, 2000);
     }
     setOfferSubmitting(false);
@@ -344,6 +377,75 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
             </div>
           )}
         </div>
+
+        {/* Mes offres */}
+        {myOffers.length > 0 && (
+          <div className="mb-6 bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b bg-gray-50">
+              <h3 className="font-semibold text-gray-700">
+                Mes offres ({myOffers.length})
+                <span className="text-xs font-normal text-gray-400 ml-2">
+                  en attente, acceptees ou refusees
+                </span>
+              </h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 text-gray-500 border-b">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs uppercase">Code moteur</th>
+                    <th className="px-3 py-2 text-left text-xs uppercase">Marque</th>
+                    <th className="px-3 py-2 text-right text-xs uppercase">Prix</th>
+                    <th className="px-3 py-2 text-center text-xs uppercase">Qte</th>
+                    <th className="px-3 py-2 text-center text-xs uppercase">Statut</th>
+                    <th className="px-3 py-2 text-center text-xs uppercase">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {myOffers.map((o) => {
+                    const statusClass =
+                      o.status === "accepted" ? "bg-emerald-100 text-emerald-700" :
+                      o.status === "rejected" ? "bg-red-100 text-red-700" :
+                      "bg-amber-100 text-amber-700";
+                    const statusLabel =
+                      o.status === "accepted" ? "Acceptee" :
+                      o.status === "rejected" ? "Refusee" :
+                      "En attente";
+                    return (
+                      <tr key={o.id} className="hover:bg-gray-50">
+                        <td className="px-3 py-2 font-semibold">{o.code_moteur}</td>
+                        <td className="px-3 py-2 text-gray-600">{o.marque || "—"}</td>
+                        <td className="px-3 py-2 text-right font-medium">
+                          {o.prix_demande != null ? `${o.prix_demande} €` : "—"}
+                        </td>
+                        <td className="px-3 py-2 text-center">{o.qty ?? 1}</td>
+                        <td className="px-3 py-2 text-center">
+                          <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${statusClass}`}>
+                            {statusLabel}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          {o.status === "accepted" ? (
+                            <Button
+                              size="sm"
+                              disabled={delivering === o.id}
+                              onClick={() => deliverOffer(o.id)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                              {delivering === o.id ? "..." : "Livrer"}
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-gray-400">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* Besoins table */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-6">

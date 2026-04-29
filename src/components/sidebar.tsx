@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, TrendingUp, Target, BarChart3, Euro,
   PackageOpen, Search, Cog, ClipboardList, History,
-  Wrench, Building2, Users, LogOut,
+  Wrench, Building2, Users, LogOut, Inbox,
 } from "lucide-react";
 
 const navSections = [
@@ -108,17 +108,30 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
             <p className="px-4 text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted mb-2">
               Administration
             </p>
-            <Link
-              href="/admin/utilisateurs"
-              className={cn(
-                "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
-                pathname === "/admin/utilisateurs"
-                  ? "bg-brand-soft text-brand"
-                  : "text-text-dim hover:bg-surface-hover hover:text-foreground"
-              )}
-            >
-              <Users size={18} /> Utilisateurs
-            </Link>
+            <div className="space-y-1">
+              <Link
+                href="/admin/utilisateurs"
+                className={cn(
+                  "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
+                  pathname === "/admin/utilisateurs"
+                    ? "bg-brand-soft text-brand"
+                    : "text-text-dim hover:bg-surface-hover hover:text-foreground"
+                )}
+              >
+                <Users size={18} /> Utilisateurs
+              </Link>
+              <Link
+                href="/admin/offres"
+                className={cn(
+                  "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
+                  pathname === "/admin/offres"
+                    ? "bg-brand-soft text-brand"
+                    : "text-text-dim hover:bg-surface-hover hover:text-foreground"
+                )}
+              >
+                <Inbox size={18} /> Offres VHU
+              </Link>
+            </div>
           </div>
         )}
       </nav>
