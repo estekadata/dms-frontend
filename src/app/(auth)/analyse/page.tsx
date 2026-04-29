@@ -96,7 +96,8 @@ export default function AnalysePage() {
 
           const raw = (m.nom_type_moteur || "").trim();
           const type = raw.split(/[\s\-]+/)[0].toUpperCase();
-          if (type && type.length >= 2) {
+          // Filtre les codes purement numériques (ex "16" pour "16 soupapes")
+          if (type && type.length >= 2 && /[A-Z]/.test(type)) {
             byType[type] = byType[type] || { total: 0, count: 0 };
             byType[type].total += p;
             byType[type].count++;
@@ -204,7 +205,11 @@ export default function AnalysePage() {
             (motors || []).forEach((m: any) => {
               const raw = (typeNameById[m.n_type_moteur] || m.code_moteur || "").trim();
               const code = raw.split(/[\s\-]+/)[0].toUpperCase();
-              if (code && code.length >= 2) codeByMotor[m.n_moteur] = code;
+              // Un vrai code moteur contient au moins une lettre (sinon c'est juste
+              // un nombre comme "16" pour "16 soupapes" → bruit dans les stats).
+              if (code && code.length >= 2 && /[A-Z]/.test(code)) {
+                codeByMotor[m.n_moteur] = code;
+              }
             });
           });
         }
