@@ -37,5 +37,7 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // Exclut aussi les fichiers statiques de /public (logo, icones, polices),
+  // sinon le middleware les redirige vers / pour les visiteurs non authentifies.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:jpg|jpeg|png|gif|svg|webp|ico|woff|woff2|ttf|css|js|map)$).*)"],
 };
