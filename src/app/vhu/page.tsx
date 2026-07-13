@@ -24,7 +24,9 @@ type Besoin = {
   marque?: string | null;
   energie?: string | null;
   type_moteur?: string | null;
-  urgence: number;
+  urgence?: number;
+  quantite?: number;
+  stock_dispo?: number;
   prix_moyen: number;
 };
 type Offer = {
@@ -43,14 +45,22 @@ type Plaque = {
   marque?: string | null;
   modele?: string | null;
 };
-type SortKey = "urgence" | "prix_moyen" | "code_moteur";
+type SortKey = "quantite" | "rupture" | "prix_moyen" | "code_moteur";
 
 /* ══════════════════════════ HELPERS ══════════════════════════ */
-// Niveau de demande, en clair (un casseur ne parle pas en "urgence 7/10")
-function demande(u: number): { label: string; cls: string; dot: string } {
-  if (u >= 8) return { label: "Très recherché", cls: "bg-brand/10 text-brand", dot: "bg-brand" };
-  if (u >= 5) return { label: "Recherché", cls: "bg-amber-500/10 text-amber-600", dot: "bg-amber-500" };
-  return { label: "Demandé", cls: "bg-emerald-500/10 text-emerald-600", dot: "bg-emerald-500" };
+function isRupture(b: Besoin): boolean {
+  return (b.stock_dispo ?? 0) === 0 && (b.quantite ?? 0) > 0;
+}
+// Niveau de demande basé sur la demande RÉELLE (quantite) + rupture de stock.
+// (On n'utilise PAS `urgence` : cette colonne de la vue sature à 10 même quand
+//  quantite=0 → elle classait "très recherché" des moteurs que personne ne veut.)
+function demande(b: Besoin): { label: string; cls: string; dot: string } {
+  const q = b.quantite ?? 0;
+  if (isRupture(b)) return { label: "En rupture", cls: "bg-brand/10 text-brand", dot: "bg-brand" };
+  if (q >= 30) return { label: "Très recherché", cls: "bg-amber-500/10 text-amber-600", dot: "bg-amber-500" };
+  if (q >= 10) return { label: "Recherché", cls: "bg-emerald-500/10 text-emerald-600", dot: "bg-emerald-500" };
+  if (q >= 1) return { label: "Demandé", cls: "bg-surface-hover text-text-dim", dot: "bg-text-dim" };
+  return { label: "Occasionnel", cls: "bg-surface-hover text-text-muted", dot: "bg-text-muted" };
 }
 function statut(s: string): { label: string; cls: string } {
   if (s === "accepted") return { label: "Acceptée", cls: "bg-emerald-500/10 text-emerald-600" };
@@ -123,7 +133,7 @@ function Sheet({
 
 /* ══════════════════════════ CARTE BESOIN ══════════════════════════ */
 function BesoinCard({ b, onClaim, claimed }: { b: Besoin; onClaim: (b: Besoin) => void; claimed: boolean }) {
-  const d = demande(b.urgence);
+  const d = demande(b);
   return (
     <div
       className={`flex flex-col gap-3 rounded-2xl bg-card p-4 ring-1 transition ${
@@ -139,6 +149,11 @@ function BesoinCard({ b, onClaim, claimed }: { b: Besoin; onClaim: (b: Besoin) =
             )}
             {b.energie && (
               <span className="rounded-full bg-surface-hover px-2 py-0.5 text-xs font-medium text-text-dim">{b.energie}</span>
+            )}
+            {(b.quantite ?? 0) > 0 && (
+              <span className="rounded-full bg-surface-hover px-2 py-0.5 text-xs font-medium text-text-muted">
+                {b.quantite} recherchés
+              </span>
             )}
           </div>
         </div>
@@ -242,7 +257,7 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
   const [plaqueLoading, setPlaqueLoading] = useState(false);
   const [lockedCode, setLockedCode] = useState<string | null>(null);
 
-  const [sortKey, setSortKey] = useState<SortKey>("urgence");
+  const [sortKey, setSortKey] = useState<SortKey>("quantite");
   const [energyFilter, setEnergyFilter] = useState<string | null>(null);
   const [visible, setVisible] = useState(24);
 
@@ -336,9 +351,13 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
     if (energyFilter) list = list.filter((b) => matchEnergy(b.energie, energyFilter));
     return [...list].sort((a, b) => {
       if (sortKey === "code_moteur") return (a.code_moteur || "").localeCompare(b.code_moteur || "");
-      const av = (a[sortKey] as number) ?? 0;
-      const bv = (b[sortKey] as number) ?? 0;
-      return bv - av; // urgence & prix : décroissant
+      if (sortKey === "rupture") {
+        const diff = (isRupture(b) ? 1 : 0) - (isRupture(a) ? 1 : 0);
+        if (diff !== 0) return diff;
+        return (b.quantite ?? 0) - (a.quantite ?? 0);
+      }
+      const key = sortKey === "prix_moyen" ? "prix_moyen" : "quantite";
+      return ((b[key] as number) ?? 0) - ((a[key] as number) ?? 0); // demande & prix : décroissant
     });
   }, [besoins, search, lockedCode, sortKey, energyFilter]);
 
@@ -455,7 +474,8 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
   );
 
   const sortChips: { key: SortKey; label: string }[] = [
-    { key: "urgence", label: "Plus recherchés" },
+    { key: "quantite", label: "Plus demandés" },
+    { key: "rupture", label: "En rupture" },
     { key: "prix_moyen", label: "Prix ↓" },
     { key: "code_moteur", label: "Code A→Z" },
   ];
