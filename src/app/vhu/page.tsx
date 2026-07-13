@@ -45,21 +45,20 @@ type Plaque = {
   marque?: string | null;
   modele?: string | null;
 };
-type SortKey = "quantite" | "rupture" | "prix_moyen" | "code_moteur";
+type SortKey = "priorite" | "quantite" | "prix_moyen" | "code_moteur";
 
 /* ══════════════════════════ HELPERS ══════════════════════════ */
 function isRupture(b: Besoin): boolean {
   return (b.stock_dispo ?? 0) === 0 && (b.quantite ?? 0) > 0;
 }
-// Niveau de demande basé sur la demande RÉELLE (quantite) + rupture de stock.
-// (On n'utilise PAS `urgence` : cette colonne de la vue sature à 10 même quand
-//  quantite=0 → elle classait "très recherché" des moteurs que personne ne veut.)
+// Le badge suit la priorité CURÉE par le client (colonne `urgence`, qui est un
+// override manuel dans ~97% des cas). La rupture de stock (objective) est
+// affichée à part, et le nb de ventes/6 mois donne le contexte.
 function demande(b: Besoin): { label: string; cls: string; dot: string } {
-  const q = b.quantite ?? 0;
-  if (isRupture(b)) return { label: "En rupture", cls: "bg-brand/10 text-brand", dot: "bg-brand" };
-  if (q >= 30) return { label: "Très recherché", cls: "bg-amber-500/10 text-amber-600", dot: "bg-amber-500" };
-  if (q >= 10) return { label: "Recherché", cls: "bg-emerald-500/10 text-emerald-600", dot: "bg-emerald-500" };
-  if (q >= 1) return { label: "Demandé", cls: "bg-surface-hover text-text-dim", dot: "bg-text-dim" };
+  const u = b.urgence ?? 0;
+  if (u >= 8) return { label: "Très recherché", cls: "bg-amber-500/10 text-amber-600", dot: "bg-amber-500" };
+  if (u >= 5) return { label: "Recherché", cls: "bg-emerald-500/10 text-emerald-600", dot: "bg-emerald-500" };
+  if (u >= 3) return { label: "Demandé", cls: "bg-surface-hover text-text-dim", dot: "bg-text-dim" };
   return { label: "Occasionnel", cls: "bg-surface-hover text-text-muted", dot: "bg-text-muted" };
 }
 function statut(s: string): { label: string; cls: string } {
@@ -144,15 +143,20 @@ function BesoinCard({ b, onClaim, claimed }: { b: Besoin; onClaim: (b: Besoin) =
         <div className="min-w-0">
           <p className="truncate font-mono text-lg font-bold text-foreground">{b.code_moteur}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            {isRupture(b) && (
+              <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-brand/10 px-2 py-0.5 text-xs font-semibold text-brand">
+                <span className="size-1.5 rounded-full bg-brand" /> En rupture
+              </span>
+            )}
             {b.marque && (
-              <span className="rounded-full bg-surface-hover px-2 py-0.5 text-xs font-medium text-text-dim">{b.marque}</span>
+              <span className="whitespace-nowrap rounded-full bg-surface-hover px-2 py-0.5 text-xs font-medium text-text-dim">{b.marque}</span>
             )}
             {b.energie && (
-              <span className="rounded-full bg-surface-hover px-2 py-0.5 text-xs font-medium text-text-dim">{b.energie}</span>
+              <span className="whitespace-nowrap rounded-full bg-surface-hover px-2 py-0.5 text-xs font-medium text-text-dim">{b.energie}</span>
             )}
             {(b.quantite ?? 0) > 0 && (
-              <span className="rounded-full bg-surface-hover px-2 py-0.5 text-xs font-medium text-text-muted">
-                {b.quantite} recherchés
+              <span className="whitespace-nowrap rounded-full bg-surface-hover px-2 py-0.5 text-xs font-medium text-text-muted">
+                {b.quantite} vendus/6 mois
               </span>
             )}
           </div>
@@ -257,7 +261,7 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
   const [plaqueLoading, setPlaqueLoading] = useState(false);
   const [lockedCode, setLockedCode] = useState<string | null>(null);
 
-  const [sortKey, setSortKey] = useState<SortKey>("quantite");
+  const [sortKey, setSortKey] = useState<SortKey>("priorite");
   const [energyFilter, setEnergyFilter] = useState<string | null>(null);
   const [visible, setVisible] = useState(24);
 
@@ -351,9 +355,12 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
     if (energyFilter) list = list.filter((b) => matchEnergy(b.energie, energyFilter));
     return [...list].sort((a, b) => {
       if (sortKey === "code_moteur") return (a.code_moteur || "").localeCompare(b.code_moteur || "");
-      if (sortKey === "rupture") {
-        const diff = (isRupture(b) ? 1 : 0) - (isRupture(a) ? 1 : 0);
-        if (diff !== 0) return diff;
+      if (sortKey === "priorite") {
+        // rupture d'abord, puis priorité client (urgence), puis volume de ventes
+        const r = (isRupture(b) ? 1 : 0) - (isRupture(a) ? 1 : 0);
+        if (r !== 0) return r;
+        const u = (b.urgence ?? 0) - (a.urgence ?? 0);
+        if (u !== 0) return u;
         return (b.quantite ?? 0) - (a.quantite ?? 0);
       }
       const key = sortKey === "prix_moyen" ? "prix_moyen" : "quantite";
@@ -474,8 +481,8 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
   );
 
   const sortChips: { key: SortKey; label: string }[] = [
-    { key: "quantite", label: "Plus demandés" },
-    { key: "rupture", label: "En rupture" },
+    { key: "priorite", label: "Recommandés" },
+    { key: "quantite", label: "Plus vendus" },
     { key: "prix_moyen", label: "Prix ↓" },
     { key: "code_moteur", label: "Code A→Z" },
   ];
