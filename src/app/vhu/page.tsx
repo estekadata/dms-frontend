@@ -16,6 +16,7 @@ import {
   TrendingUp,
   Loader2,
   PackageSearch,
+  Camera,
 } from "lucide-react";
 
 /* ══════════════════════════ TYPES ══════════════════════════ */
@@ -274,6 +275,8 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
   const [offerPrix, setOfferPrix] = useState("");
   const [offerQty, setOfferQty] = useState("1");
   const [offerNote, setOfferNote] = useState("");
+  const [offerPhoto, setOfferPhoto] = useState<File | null>(null);
+  const [offerPhotoPreview, setOfferPhotoPreview] = useState("");
   const [offerSubmitting, setOfferSubmitting] = useState(false);
 
   // Sheet "Proposer un moteur"
@@ -372,17 +375,40 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
   const shown = filtered.slice(0, visible);
 
   /* ── actions offres ── */
+  function clearPhoto() {
+    if (offerPhotoPreview) URL.revokeObjectURL(offerPhotoPreview);
+    setOfferPhoto(null);
+    setOfferPhotoPreview("");
+  }
+
   function openClaim(b: Besoin) {
     setClaimTarget(b);
     // Pré-rempli au prix de reprise indicatif → offre en 1 tap.
     setOfferPrix(b.prix_moyen > 0 ? String(Math.round(b.prix_moyen)) : "");
     setOfferQty("1");
     setOfferNote("");
+    clearPhoto();
   }
 
   async function submitOffer() {
     if (!claimTarget || !offerPrix) return;
     setOfferSubmitting(true);
+
+    // Upload photo (optionnel) vers le bucket public vhu-photos
+    let photoUrl: string | null = null;
+    if (offerPhoto) {
+      const ext = (offerPhoto.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+      const path = `${centreId}/${Date.now()}-${Math.floor(Math.random() * 1e6)}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("vhu-photos")
+        .upload(path, offerPhoto, { contentType: offerPhoto.type || "image/jpeg", upsert: false });
+      if (upErr) {
+        toast.error("Photo non envoyée : " + upErr.message);
+      } else {
+        photoUrl = supabase.storage.from("vhu-photos").getPublicUrl(path).data.publicUrl;
+      }
+    }
+
     const { error } = await supabase.from("breaker_click_offers").insert({
       breaker_id: centreId,
       code_moteur: claimTarget.code_moteur,
@@ -391,6 +417,7 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
       prix_demande: parseFloat(offerPrix),
       qty: parseInt(offerQty) || 1,
       note: offerNote || null,
+      photo_moteur_path: photoUrl,
     });
     setOfferSubmitting(false);
     if (error) {
@@ -399,6 +426,7 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
     }
     toast.success(`Offre envoyée pour ${claimTarget.code_moteur}`);
     setTodayCount((c) => c + 1);
+    clearPhoto();
     setClaimTarget(null);
     loadMyOffers();
   }
@@ -845,6 +873,40 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
                 placeholder="État, kilométrage, disponibilité…"
                 className="mt-1 h-12 rounded-xl text-base"
               />
+            </div>
+            <div>
+              <Label className="text-xs text-text-dim">Photo du moteur (optionnel)</Label>
+              {offerPhotoPreview ? (
+                <div className="relative mt-1">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={offerPhotoPreview} alt="Aperçu moteur" className="h-44 w-full rounded-xl object-cover ring-1 ring-foreground/10" />
+                  <button
+                    type="button"
+                    onClick={clearPhoto}
+                    className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full bg-black/60 text-white"
+                    aria-label="Retirer la photo"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <label className="mt-1 flex h-14 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-alt text-sm font-medium text-text-dim transition hover:bg-surface-hover">
+                  <Camera size={18} /> Prendre / choisir une photo
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (!f) return;
+                      if (offerPhotoPreview) URL.revokeObjectURL(offerPhotoPreview);
+                      setOfferPhoto(f);
+                      setOfferPhotoPreview(URL.createObjectURL(f));
+                    }}
+                  />
+                </label>
+              )}
             </div>
             <Button
               onClick={submitOffer}

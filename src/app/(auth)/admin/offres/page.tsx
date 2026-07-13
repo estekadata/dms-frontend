@@ -21,6 +21,7 @@ type Offer = {
   qty: number | null;
   note: string | null;
   created_at: string;
+  photo_moteur_path?: string | null;
 };
 
 export default function OffresAdminPage() {
@@ -163,6 +164,7 @@ export default function OffresAdminPage() {
                           <th className="px-3 py-2 text-right">Prix</th>
                           <th className="px-3 py-2 text-center">Qte</th>
                           <th className="px-3 py-2 text-left">Note</th>
+                          <th className="px-3 py-2 text-center">Photo</th>
                           <th className="px-3 py-2 text-left">Recue</th>
                         </tr>
                       </thead>
@@ -185,8 +187,15 @@ export default function OffresAdminPage() {
                             </td>
                             <td className="px-3 py-2 text-center">{o.qty ?? 1}</td>
                             <td className="px-3 py-2 text-text-dim text-xs">{o.note || "—"}</td>
-                            <td className="px-3 py-2 text-text-dim text-xs">
-                              {new Date(o.created_at).toLocaleString("fr-FR")}
+                            <td className="px-3 py-2 text-center">
+                              {o.photo_moteur_path ? (
+                                <a href={o.photo_moteur_path} target="_blank" rel="noreferrer" title="Voir la photo">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={o.photo_moteur_path} alt="moteur" className="mx-auto h-12 w-16 rounded object-cover ring-1 ring-border" />
+                                </a>
+                              ) : (
+                                <span className="text-text-muted">—</span>
+                              )}
                             </td>
                           </tr>
                         ))}
