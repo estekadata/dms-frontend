@@ -3,9 +3,19 @@ import { createClient } from "@supabase/supabase-js";
 import { getSession } from "@/lib/auth";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// Gestion des utilisateurs : nécessite la clé service_role (la table dms_users
+// est protégée par RLS, la clé anon publique n'y a plus accès). On NE retombe
+// PLUS sur la clé anon : ce serait inopérant (bloqué par la RLS) et masquerait
+// une mauvaise configuration.
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 function getSupabaseAdmin() {
+  if (!supabaseServiceKey) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY manquant : configure-la (Supabase > Settings > API) " +
+        "pour pouvoir gérer les utilisateurs."
+    );
+  }
   return createClient(supabaseUrl, supabaseServiceKey);
 }
 

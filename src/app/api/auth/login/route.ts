@@ -17,26 +17,26 @@ export async function POST(req: NextRequest) {
   const pwdHash = await hashPassword(password);
   let user: SessionUser | null = null;
 
-  // Try dms_users table
-  const { data, error } = await supabase
-    .from("dms_users")
-    .select("id, email, nom, role")
-    .eq("email", email.trim())
-    .eq("password_hash", pwdHash)
-    .eq("actif", true)
-    .single();
+  // Vérification via la fonction SECURITY DEFINER `dms_login`.
+  // La table dms_users est verrouillée par RLS : la clé anon n'y a plus accès
+  // en direct (cf. secure_dms_users.sql). La fonction ne renvoie l'utilisateur
+  // que si (email, password_hash, actif) correspondent et met à jour last_login.
+  const { data, error } = await supabase.rpc("dms_login", {
+    p_email: email.trim(),
+    p_password_hash: pwdHash,
+  });
 
-  if (data && !error) {
-    user = { id: data.id, email: data.email, nom: data.nom || "", role: data.role };
-    // Update last login
-    await supabase.from("dms_users").update({ last_login: new Date().toISOString() }).eq("id", data.id);
+  const row = Array.isArray(data) ? data[0] : data;
+  if (row && !error) {
+    user = { id: row.id, email: row.email, nom: row.nom || "", role: row.role };
   }
 
-  // Fallback: legacy admin
+  // Fallback admin de secours — UNIQUEMENT si explicitement configuré via env.
+  // (plus de défaut "admin"/"change-moi" en dur : c'était un backdoor super_admin)
   if (!user) {
-    const adminUser = process.env.ADMIN_USER || "admin";
-    const adminPwd = process.env.ADMIN_PASSWORD || "change-moi";
-    if (email === adminUser && password === adminPwd) {
+    const adminUser = process.env.ADMIN_USER;
+    const adminPwd = process.env.ADMIN_PASSWORD;
+    if (adminUser && adminPwd && email === adminUser && password === adminPwd) {
       user = { id: 0, email: "admin", nom: "Administrateur", role: "super_admin" };
     }
   }
