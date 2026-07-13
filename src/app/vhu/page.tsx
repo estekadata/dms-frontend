@@ -17,6 +17,8 @@ import {
   Loader2,
   PackageSearch,
   Camera,
+  ChevronDown,
+  Mic,
 } from "lucide-react";
 
 /* ══════════════════════════ TYPES ══════════════════════════ */
@@ -277,6 +279,13 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
   const [offerNote, setOfferNote] = useState("");
   const [offerPhoto, setOfferPhoto] = useState<File | null>(null);
   const [offerPhotoPreview, setOfferPhotoPreview] = useState("");
+  const [offerPlaque, setOfferPlaque] = useState<File | null>(null);
+  const [offerPlaquePreview, setOfferPlaquePreview] = useState("");
+  const [offerAudio, setOfferAudio] = useState<File | null>(null);
+  const [offerAudioPreview, setOfferAudioPreview] = useState("");
+  const [offerImmat, setOfferImmat] = useState("");
+  const [offerVin, setOfferVin] = useState("");
+  const [showDetails, setShowDetails] = useState(false);
   const [offerSubmitting, setOfferSubmitting] = useState(false);
 
   // Sheet "Proposer un moteur"
@@ -375,10 +384,34 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
   const shown = filtered.slice(0, visible);
 
   /* ── actions offres ── */
-  function clearPhoto() {
-    if (offerPhotoPreview) URL.revokeObjectURL(offerPhotoPreview);
+  function revokeUrl(u: string) {
+    if (u) URL.revokeObjectURL(u);
+  }
+  function clearOfferMedia() {
+    revokeUrl(offerPhotoPreview);
     setOfferPhoto(null);
     setOfferPhotoPreview("");
+    revokeUrl(offerPlaquePreview);
+    setOfferPlaque(null);
+    setOfferPlaquePreview("");
+    revokeUrl(offerAudioPreview);
+    setOfferAudio(null);
+    setOfferAudioPreview("");
+  }
+
+  // Upload optionnel vers le bucket public vhu-photos. Retourne l'URL publique,
+  // ou null (+ toast) en cas d'échec — non bloquant pour l'offre.
+  async function uploadOfferFile(file: File, kind: string): Promise<string | null> {
+    const ext = (file.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
+    const path = `${centreId}/${kind}-${Date.now()}-${Math.floor(Math.random() * 1e6)}.${ext}`;
+    const { error } = await supabase.storage
+      .from("vhu-photos")
+      .upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false });
+    if (error) {
+      toast.error(`Envoi ${kind} échoué : ` + error.message);
+      return null;
+    }
+    return supabase.storage.from("vhu-photos").getPublicUrl(path).data.publicUrl;
   }
 
   function openClaim(b: Besoin) {
@@ -387,27 +420,20 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
     setOfferPrix(b.prix_moyen > 0 ? String(Math.round(b.prix_moyen)) : "");
     setOfferQty("1");
     setOfferNote("");
-    clearPhoto();
+    setOfferImmat("");
+    setOfferVin("");
+    setShowDetails(false);
+    clearOfferMedia();
   }
 
   async function submitOffer() {
     if (!claimTarget || !offerPrix) return;
     setOfferSubmitting(true);
 
-    // Upload photo (optionnel) vers le bucket public vhu-photos
-    let photoUrl: string | null = null;
-    if (offerPhoto) {
-      const ext = (offerPhoto.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-      const path = `${centreId}/${Date.now()}-${Math.floor(Math.random() * 1e6)}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from("vhu-photos")
-        .upload(path, offerPhoto, { contentType: offerPhoto.type || "image/jpeg", upsert: false });
-      if (upErr) {
-        toast.error("Photo non envoyée : " + upErr.message);
-      } else {
-        photoUrl = supabase.storage.from("vhu-photos").getPublicUrl(path).data.publicUrl;
-      }
-    }
+    // Uploads optionnels : photo moteur, photo plaque, note vocale
+    const photoMoteur = offerPhoto ? await uploadOfferFile(offerPhoto, "moteur") : null;
+    const photoPlaque = offerPlaque ? await uploadOfferFile(offerPlaque, "plaque") : null;
+    const audio = offerAudio ? await uploadOfferFile(offerAudio, "audio") : null;
 
     const { error } = await supabase.from("breaker_click_offers").insert({
       breaker_id: centreId,
@@ -417,7 +443,11 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
       prix_demande: parseFloat(offerPrix),
       qty: parseInt(offerQty) || 1,
       note: offerNote || null,
-      photo_moteur_path: photoUrl,
+      immatriculation: offerImmat.trim() || null,
+      vin: offerVin.trim() || null,
+      photo_moteur_path: photoMoteur,
+      photo_plaque_path: photoPlaque,
+      audio_path: audio,
     });
     setOfferSubmitting(false);
     if (error) {
@@ -426,7 +456,7 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
     }
     toast.success(`Offre envoyée pour ${claimTarget.code_moteur}`);
     setTodayCount((c) => c + 1);
-    clearPhoto();
+    clearOfferMedia();
     setClaimTarget(null);
     loadMyOffers();
   }
@@ -882,7 +912,11 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
                   <img src={offerPhotoPreview} alt="Aperçu moteur" className="h-44 w-full rounded-xl object-cover ring-1 ring-foreground/10" />
                   <button
                     type="button"
-                    onClick={clearPhoto}
+                    onClick={() => {
+                      revokeUrl(offerPhotoPreview);
+                      setOfferPhoto(null);
+                      setOfferPhotoPreview("");
+                    }}
                     className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full bg-black/60 text-white"
                     aria-label="Retirer la photo"
                   >
@@ -908,6 +942,123 @@ function VhuPortal({ centreId, centreName }: { centreId: string; centreName: str
                 </label>
               )}
             </div>
+
+            {/* Détails véhicule (optionnels, repliés par défaut) */}
+            <div className="rounded-xl border border-border">
+              <button
+                type="button"
+                onClick={() => setShowDetails((v) => !v)}
+                className="flex w-full items-center justify-between px-3 py-2.5 text-sm font-medium text-text-dim"
+              >
+                <span>Détails véhicule (plaque, immat, VIN, vocal)</span>
+                <ChevronDown size={16} className={`transition ${showDetails ? "rotate-180" : ""}`} />
+              </button>
+              {showDetails && (
+                <div className="space-y-3 border-t border-border p-3">
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <Label className="text-xs text-text-dim">Immatriculation</Label>
+                      <Input
+                        value={offerImmat}
+                        onChange={(e) => setOfferImmat(e.target.value)}
+                        placeholder="AA-123-BB"
+                        className="mt-1 h-11 rounded-xl text-base uppercase"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <Label className="text-xs text-text-dim">N° série / VIN</Label>
+                      <Input
+                        value={offerVin}
+                        onChange={(e) => setOfferVin(e.target.value)}
+                        placeholder="VF1..."
+                        className="mt-1 h-11 rounded-xl text-base uppercase"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Photo de la plaque */}
+                  <div>
+                    <Label className="text-xs text-text-dim">Photo de la plaque</Label>
+                    {offerPlaquePreview ? (
+                      <div className="relative mt-1">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={offerPlaquePreview} alt="Aperçu plaque" className="h-36 w-full rounded-xl object-cover ring-1 ring-foreground/10" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            revokeUrl(offerPlaquePreview);
+                            setOfferPlaque(null);
+                            setOfferPlaquePreview("");
+                          }}
+                          className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full bg-black/60 text-white"
+                          aria-label="Retirer la photo"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="mt-1 flex h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-alt text-sm font-medium text-text-dim transition hover:bg-surface-hover">
+                        <Camera size={16} /> Photo de la plaque
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (!f) return;
+                            revokeUrl(offerPlaquePreview);
+                            setOfferPlaque(f);
+                            setOfferPlaquePreview(URL.createObjectURL(f));
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+
+                  {/* Note vocale */}
+                  <div>
+                    <Label className="text-xs text-text-dim">Note vocale</Label>
+                    {offerAudioPreview ? (
+                      <div className="mt-1 flex items-center gap-2">
+                        {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                        <audio controls src={offerAudioPreview} className="h-10 w-full" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            revokeUrl(offerAudioPreview);
+                            setOfferAudio(null);
+                            setOfferAudioPreview("");
+                          }}
+                          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-hover text-text-dim"
+                          aria-label="Retirer la note vocale"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="mt-1 flex h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-alt text-sm font-medium text-text-dim transition hover:bg-surface-hover">
+                        <Mic size={16} /> Enregistrer / choisir un audio
+                        <input
+                          type="file"
+                          accept="audio/*"
+                          capture
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (!f) return;
+                            revokeUrl(offerAudioPreview);
+                            setOfferAudio(f);
+                            setOfferAudioPreview(URL.createObjectURL(f));
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <Button
               onClick={submitOffer}
               disabled={offerSubmitting || !offerPrix}

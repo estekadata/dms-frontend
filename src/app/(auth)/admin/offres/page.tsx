@@ -21,7 +21,11 @@ type Offer = {
   qty: number | null;
   note: string | null;
   created_at: string;
+  immatriculation?: string | null;
+  vin?: string | null;
   photo_moteur_path?: string | null;
+  photo_plaque_path?: string | null;
+  audio_path?: string | null;
 };
 
 export default function OffresAdminPage() {
@@ -161,10 +165,13 @@ export default function OffresAdminPage() {
                           <th className="px-3 py-2 text-left">Code moteur</th>
                           <th className="px-3 py-2 text-left">Marque</th>
                           <th className="px-3 py-2 text-left">Energie</th>
+                          <th className="px-3 py-2 text-left">Véhicule</th>
                           <th className="px-3 py-2 text-right">Prix</th>
                           <th className="px-3 py-2 text-center">Qte</th>
                           <th className="px-3 py-2 text-left">Note</th>
-                          <th className="px-3 py-2 text-center">Photo</th>
+                          <th className="px-3 py-2 text-center">Moteur</th>
+                          <th className="px-3 py-2 text-center">Plaque</th>
+                          <th className="px-3 py-2 text-center">Audio</th>
                           <th className="px-3 py-2 text-left">Recue</th>
                         </tr>
                       </thead>
@@ -182,6 +189,11 @@ export default function OffresAdminPage() {
                             <td className="px-3 py-2">
                               {o.energie ? <Badge className="bg-emerald-50 text-emerald-700">{o.energie}</Badge> : "—"}
                             </td>
+                            <td className="px-3 py-2 text-xs">
+                              {o.immatriculation && <div className="font-mono font-medium text-foreground">{o.immatriculation}</div>}
+                              {o.vin && <div className="font-mono text-text-muted">{o.vin}</div>}
+                              {!o.immatriculation && !o.vin && <span className="text-text-muted">—</span>}
+                            </td>
                             <td className="px-3 py-2 text-right font-medium">
                               {o.prix_demande != null ? `${o.prix_demande} €` : "—"}
                             </td>
@@ -192,6 +204,25 @@ export default function OffresAdminPage() {
                                 <a href={o.photo_moteur_path} target="_blank" rel="noreferrer" title="Voir la photo">
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img src={o.photo_moteur_path} alt="moteur" className="mx-auto h-12 w-16 rounded object-cover ring-1 ring-border" />
+                                </a>
+                              ) : (
+                                <span className="text-text-muted">—</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              {o.photo_plaque_path ? (
+                                <a href={o.photo_plaque_path} target="_blank" rel="noreferrer" title="Voir la plaque">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={o.photo_plaque_path} alt="plaque" className="mx-auto h-12 w-16 rounded object-cover ring-1 ring-border" />
+                                </a>
+                              ) : (
+                                <span className="text-text-muted">—</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              {o.audio_path ? (
+                                <a href={o.audio_path} target="_blank" rel="noreferrer" className="text-xs text-brand underline">
+                                  ▶ écouter
                                 </a>
                               ) : (
                                 <span className="text-text-muted">—</span>

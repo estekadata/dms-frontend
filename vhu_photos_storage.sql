@@ -30,7 +30,8 @@ create policy "vhu_photos_select" on storage.objects
 CREATE OR REPLACE VIEW public.v_offres_pending AS
  SELECT o.id, o.breaker_id, b.name AS breaker_name, o.code_moteur, o.marque,
     o.energie, o.type_nom, o.type_modele, o.type_annee, o.prix_demande, o.qty,
-    o.note, o.created_at, o.photo_moteur_path, o.immatriculation, o.vin
+    o.note, o.created_at, o.photo_moteur_path, o.immatriculation, o.vin,
+    o.photo_plaque_path, o.audio_path
    FROM breaker_click_offers o
      JOIN breakers b ON b.id = o.breaker_id
   WHERE o.status = 'pending'::text
