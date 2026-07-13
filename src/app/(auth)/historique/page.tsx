@@ -121,91 +121,159 @@ export default function HistoriquePage() {
       {loading ? (
         <div className="text-center py-12 text-text-muted">Chargement...</div>
       ) : tab === "Réceptions" ? (
-        <div className="bg-surface border border-border rounded-[14px] overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-surface-alt text-text-dim text-xs uppercase">
-              <tr>
-                <th className="px-4 py-3 text-left">N°</th>
-                <th className="px-4 py-3 text-left">Date</th>
-                <th className="px-4 py-3 text-left">Fournisseur</th>
-                <th className="px-4 py-3 text-center">Moteurs</th>
-                <th className="px-4 py-3 text-right">Montant</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {receptions.map((r) => (
-                <tr key={r.n_reception} className="hover:bg-surface-hover transition-colors">
-                  <td className="px-4 py-3 font-mono text-xs text-text-muted">{r.n_reception}</td>
-                  <td className="px-4 py-3 text-text-dim">{r.date_reception ? new Date(r.date_reception).toLocaleDateString("fr-FR") : "—"}</td>
-                  <td className="px-4 py-3 font-medium text-foreground">{r.fournisseur || "—"}</td>
-                  <td className="px-4 py-3 text-center text-text-dim">{r.nb_moteurs ?? "—"}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-text-dim">{r.montant_total ? `${Math.round(r.montant_total).toLocaleString("fr-FR")} €` : "—"}</td>
-                </tr>
+        receptions.length === 0 ? (
+          <div className="rounded-[14px] border border-border bg-surface py-10 text-center italic text-text-muted">Aucune réception</div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:hidden">
+              {receptions.map((r, i) => (
+                <div key={`rec-c-${i}`} className="rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="truncate font-semibold text-foreground">{r.fournisseur || "—"}</p>
+                    <span className="shrink-0 font-mono text-xs text-text-muted">n°{r.n_reception}</span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-2 border-t border-border pt-2 text-sm text-text-dim">
+                    <span>{r.date_reception ? new Date(r.date_reception).toLocaleDateString("fr-FR") : "—"} · {r.nb_moteurs ?? 0} moteurs</span>
+                    <span className="font-semibold text-foreground">{r.montant_total ? `${Math.round(r.montant_total).toLocaleString("fr-FR")} €` : "—"}</span>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-          {receptions.length === 0 && <p className="text-center py-10 text-text-muted italic">Aucune réception</p>}
-        </div>
+            </div>
+            <div className="hidden overflow-hidden rounded-[14px] border border-border bg-surface md:block">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-surface-alt text-text-dim text-xs uppercase">
+                    <tr>
+                      <th className="px-4 py-3 text-left">N°</th>
+                      <th className="px-4 py-3 text-left">Date</th>
+                      <th className="px-4 py-3 text-left">Fournisseur</th>
+                      <th className="px-4 py-3 text-center">Moteurs</th>
+                      <th className="px-4 py-3 text-right">Montant</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {receptions.map((r, i) => (
+                      <tr key={`rec-r-${i}`} className="transition-colors hover:bg-surface-hover">
+                        <td className="px-4 py-3 font-mono text-xs text-text-muted">{r.n_reception}</td>
+                        <td className="px-4 py-3 text-text-dim">{r.date_reception ? new Date(r.date_reception).toLocaleDateString("fr-FR") : "—"}</td>
+                        <td className="px-4 py-3 font-medium text-foreground">{r.fournisseur || "—"}</td>
+                        <td className="px-4 py-3 text-center text-text-dim">{r.nb_moteurs ?? "—"}</td>
+                        <td className="px-4 py-3 text-right tabular-nums text-text-dim">{r.montant_total ? `${Math.round(r.montant_total).toLocaleString("fr-FR")} €` : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )
       ) : tab === "Expéditions" ? (
-        <div className="bg-surface border border-border rounded-[14px] overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-surface-alt text-text-dim text-xs uppercase">
-              <tr>
-                <th className="px-4 py-3 text-left">N°</th>
-                <th className="px-4 py-3 text-left">Date</th>
-                <th className="px-4 py-3 text-left">Client</th>
-                <th className="px-4 py-3 text-left">Code moteur</th>
-                <th className="px-4 py-3 text-right">Prix vente</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {expeditions.map((e) => (
-                <tr key={e.n_expedition} className="hover:bg-surface-hover transition-colors">
-                  <td className="px-4 py-3 font-mono text-xs text-text-muted">{e.n_expedition}</td>
-                  <td className="px-4 py-3 text-text-dim">{e.date_validation ? new Date(e.date_validation).toLocaleDateString("fr-FR") : "—"}</td>
-                  <td className="px-4 py-3 font-medium text-foreground">{e.client || "—"}</td>
-                  <td className="px-4 py-3 text-text-dim">{e.code_moteur || "—"}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-text-dim">{e.prix_vente_moteur ? `${Math.round(e.prix_vente_moteur).toLocaleString("fr-FR")} €` : "—"}</td>
-                </tr>
+        expeditions.length === 0 ? (
+          <div className="rounded-[14px] border border-border bg-surface py-10 text-center italic text-text-muted">Aucune expédition</div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:hidden">
+              {expeditions.map((e, i) => (
+                <div key={`exp-c-${i}`} className="rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="truncate font-semibold text-foreground">{e.code_moteur || "—"}</p>
+                    <span className="shrink-0 font-mono text-xs text-text-muted">n°{e.n_expedition}</span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-2 border-t border-border pt-2 text-sm">
+                    <span className="min-w-0 truncate text-text-dim">
+                      {e.client || "—"} · {e.date_validation ? new Date(e.date_validation).toLocaleDateString("fr-FR") : "—"}
+                    </span>
+                    <span className="shrink-0 font-semibold text-foreground">{e.prix_vente_moteur ? `${Math.round(e.prix_vente_moteur).toLocaleString("fr-FR")} €` : "—"}</span>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-          {expeditions.length === 0 && <p className="text-center py-10 text-text-muted italic">Aucune expédition</p>}
-        </div>
+            </div>
+            <div className="hidden overflow-hidden rounded-[14px] border border-border bg-surface md:block">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-surface-alt text-text-dim text-xs uppercase">
+                    <tr>
+                      <th className="px-4 py-3 text-left">N°</th>
+                      <th className="px-4 py-3 text-left">Date</th>
+                      <th className="px-4 py-3 text-left">Client</th>
+                      <th className="px-4 py-3 text-left">Code moteur</th>
+                      <th className="px-4 py-3 text-right">Prix vente</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {expeditions.map((e, i) => (
+                      <tr key={`exp-r-${i}`} className="transition-colors hover:bg-surface-hover">
+                        <td className="px-4 py-3 font-mono text-xs text-text-muted">{e.n_expedition}</td>
+                        <td className="px-4 py-3 text-text-dim">{e.date_validation ? new Date(e.date_validation).toLocaleDateString("fr-FR") : "—"}</td>
+                        <td className="px-4 py-3 font-medium text-foreground">{e.client || "—"}</td>
+                        <td className="px-4 py-3 text-text-dim">{e.code_moteur || "—"}</td>
+                        <td className="px-4 py-3 text-right tabular-nums text-text-dim">{e.prix_vente_moteur ? `${Math.round(e.prix_vente_moteur).toLocaleString("fr-FR")} €` : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )
+      ) : stats.length === 0 ? (
+        <div className="rounded-[14px] border border-border bg-surface py-10 text-center italic text-text-muted">Aucune donnée</div>
       ) : (
-        <div className="bg-surface border border-border rounded-[14px] overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-surface-alt text-text-dim text-xs uppercase">
-              <tr>
-                <th className="px-4 py-3 text-left">Mois</th>
-                <th className="px-4 py-3 text-center">Moteurs reçus</th>
-                <th className="px-4 py-3 text-center">Moteurs vendus</th>
-                <th className="px-4 py-3 text-center">Solde</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {stats.map((s) => (
-                <tr key={s.mois} className="hover:bg-surface-hover transition-colors">
-                  <td className="px-4 py-3 font-semibold text-foreground">{s.mois}</td>
-                  <td className="px-4 py-3 text-center tabular-nums text-text-dim">{s.recus}</td>
-                  <td className="px-4 py-3 text-center tabular-nums text-text-dim">{s.vendus}</td>
-                  <td className="px-4 py-3 text-center">
-                    <Badge
-                      className={
-                        s.recus - s.vendus >= 0
-                          ? "bg-[rgba(96,165,250,0.10)] text-blue-600 border border-[rgba(96,165,250,0.20)] hover:bg-[rgba(96,165,250,0.15)]"
-                          : "bg-[rgba(248,113,113,0.10)] text-red-600 border border-[rgba(248,113,113,0.20)] hover:bg-[rgba(248,113,113,0.15)]"
-                      }
-                    >
-                      {s.recus - s.vendus >= 0 ? "+" : ""}{s.recus - s.vendus}
-                    </Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {stats.length === 0 && <p className="text-center py-10 text-text-muted italic">Aucune donnée</p>}
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:hidden">
+            {stats.map((s) => (
+              <div key={s.mois} className="flex items-center justify-between gap-3 rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
+                <div>
+                  <p className="font-semibold text-foreground">{s.mois}</p>
+                  <p className="text-xs text-text-dim">{s.recus} reçus · {s.vendus} vendus</p>
+                </div>
+                <Badge
+                  className={
+                    s.recus - s.vendus >= 0
+                      ? "bg-[rgba(96,165,250,0.10)] text-blue-600 border border-[rgba(96,165,250,0.20)]"
+                      : "bg-[rgba(248,113,113,0.10)] text-red-600 border border-[rgba(248,113,113,0.20)]"
+                  }
+                >
+                  {s.recus - s.vendus >= 0 ? "+" : ""}{s.recus - s.vendus}
+                </Badge>
+              </div>
+            ))}
+          </div>
+          <div className="hidden overflow-hidden rounded-[14px] border border-border bg-surface md:block">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-surface-alt text-text-dim text-xs uppercase">
+                  <tr>
+                    <th className="px-4 py-3 text-left">Mois</th>
+                    <th className="px-4 py-3 text-center">Moteurs reçus</th>
+                    <th className="px-4 py-3 text-center">Moteurs vendus</th>
+                    <th className="px-4 py-3 text-center">Solde</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {stats.map((s) => (
+                    <tr key={s.mois} className="transition-colors hover:bg-surface-hover">
+                      <td className="px-4 py-3 font-semibold text-foreground">{s.mois}</td>
+                      <td className="px-4 py-3 text-center tabular-nums text-text-dim">{s.recus}</td>
+                      <td className="px-4 py-3 text-center tabular-nums text-text-dim">{s.vendus}</td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge
+                          className={
+                            s.recus - s.vendus >= 0
+                              ? "bg-[rgba(96,165,250,0.10)] text-blue-600 border border-[rgba(96,165,250,0.20)] hover:bg-[rgba(96,165,250,0.15)]"
+                              : "bg-[rgba(248,113,113,0.10)] text-red-600 border border-[rgba(248,113,113,0.20)] hover:bg-[rgba(248,113,113,0.15)]"
+                          }
+                        >
+                          {s.recus - s.vendus >= 0 ? "+" : ""}{s.recus - s.vendus}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

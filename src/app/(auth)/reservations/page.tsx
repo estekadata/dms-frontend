@@ -212,54 +212,82 @@ export default function ReservationsPage() {
         <div className="text-center py-12 text-text-muted">Chargement...</div>
       ) : (
         <>
-          <div className="bg-surface border border-border rounded-[14px] overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-surface-alt text-text-dim text-xs uppercase">
-                  <tr>
-                    <th className="px-4 py-3 text-left">N°</th>
-                    <th className="px-4 py-3 text-left">{tab === "moteurs" ? "Code moteur" : "Réf BV"}</th>
-                    <th className="px-4 py-3 text-left">Client</th>
-                    <th className="px-4 py-3 text-left">Date réservation</th>
-                    <th className="px-4 py-3 text-center">Statut</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {rows.map((r) => (
-                    <tr key={`${tab}-${r.id}`} className="hover:bg-surface-hover transition-colors">
-                      <td className="px-4 py-3 font-mono text-xs text-text-muted">{r.id}</td>
-                      <td className="px-4 py-3 font-semibold text-foreground">{r.code}</td>
-                      <td className="px-4 py-3">
-                        {r.clientId !== null ? (
-                          <Link
-                            href={`/clients/${r.clientId}`}
-                            className="text-brand hover:underline font-medium"
-                          >
-                            {r.clientLabel}
-                          </Link>
-                        ) : (
-                          <span className="text-text-dim">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-text-dim">
-                        {r.date_reservation
-                          ? new Date(r.date_reservation).toLocaleDateString("fr-FR")
-                          : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge className="bg-[rgba(251,191,36,0.10)] text-amber-600 border border-[rgba(251,191,36,0.20)] hover:bg-[rgba(251,191,36,0.15)]">
-                          Active
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {rows.length === 0 ? (
+            <div className="rounded-[14px] border border-border bg-surface py-10 text-center italic text-text-muted">
+              Aucune réservation trouvée
             </div>
-            {rows.length === 0 && (
-              <p className="text-center py-10 text-text-muted italic">Aucune réservation trouvée</p>
-            )}
-          </div>
+          ) : (
+            <>
+              {/* Mobile : cartes */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:hidden">
+                {rows.map((r) => (
+                  <div key={`m-${tab}-${r.id}`} className="rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-foreground">{r.code}</p>
+                        <p className="font-mono text-xs text-text-muted">n°{r.id}</p>
+                      </div>
+                      <Badge className="bg-[rgba(251,191,36,0.10)] text-amber-600 border border-[rgba(251,191,36,0.20)]">Active</Badge>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-2 border-t border-border pt-2 text-sm">
+                      {r.clientId !== null ? (
+                        <Link href={`/clients/${r.clientId}`} className="truncate font-medium text-brand hover:underline">
+                          {r.clientLabel}
+                        </Link>
+                      ) : (
+                        <span className="text-text-dim">—</span>
+                      )}
+                      <span className="shrink-0 text-xs text-text-muted">
+                        {r.date_reservation ? new Date(r.date_reservation).toLocaleDateString("fr-FR") : "—"}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop : table */}
+              <div className="hidden overflow-hidden rounded-[14px] border border-border bg-surface md:block">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-surface-alt text-text-dim text-xs uppercase">
+                      <tr>
+                        <th className="px-4 py-3 text-left">N°</th>
+                        <th className="px-4 py-3 text-left">{tab === "moteurs" ? "Code moteur" : "Réf BV"}</th>
+                        <th className="px-4 py-3 text-left">Client</th>
+                        <th className="px-4 py-3 text-left">Date réservation</th>
+                        <th className="px-4 py-3 text-center">Statut</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {rows.map((r) => (
+                        <tr key={`${tab}-${r.id}`} className="transition-colors hover:bg-surface-hover">
+                          <td className="px-4 py-3 font-mono text-xs text-text-muted">{r.id}</td>
+                          <td className="px-4 py-3 font-semibold text-foreground">{r.code}</td>
+                          <td className="px-4 py-3">
+                            {r.clientId !== null ? (
+                              <Link href={`/clients/${r.clientId}`} className="font-medium text-brand hover:underline">
+                                {r.clientLabel}
+                              </Link>
+                            ) : (
+                              <span className="text-text-dim">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-text-dim">
+                            {r.date_reservation ? new Date(r.date_reservation).toLocaleDateString("fr-FR") : "—"}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <Badge className="bg-[rgba(251,191,36,0.10)] text-amber-600 border border-[rgba(251,191,36,0.20)] hover:bg-[rgba(251,191,36,0.15)]">
+                              Active
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
 
           {remaining > 0 && (
             <div className="flex justify-center mt-5">
