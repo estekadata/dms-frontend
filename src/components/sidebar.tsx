@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, TrendingUp, Target, BarChart3, Euro,
   PackageOpen, Search, Cog, ClipboardList, History,
-  Wrench, Building2, Users, LogOut, Inbox,
+  Wrench, Building2, Users, LogOut, Inbox, RefreshCw,
 } from "lucide-react";
 
 const navSections = [
@@ -130,6 +130,17 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
                 )}
               >
                 <Inbox size={18} /> Offres VHU
+              </Link>
+              <Link
+                href="/admin/synchronisation"
+                className={cn(
+                  "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
+                  pathname === "/admin/synchronisation"
+                    ? "bg-brand-soft text-brand"
+                    : "text-text-dim hover:bg-surface-hover hover:text-foreground"
+                )}
+              >
+                <RefreshCw size={18} /> Synchronisation
               </Link>
             </div>
           </div>
