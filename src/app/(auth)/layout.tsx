@@ -9,7 +9,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
   return (
     <div className="flex min-h-screen bg-background">
       <SidebarWrapper userName={session.nom} userRole={session.role} />
-      <main className="flex-1 ml-64 p-8">
+      <main className="flex-1 p-4 pt-[4.5rem] md:ml-64 md:p-8 md:pt-8">
         <div className="max-w-7xl mx-auto">
           {children}
         </div>

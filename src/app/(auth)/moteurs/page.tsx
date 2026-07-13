@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type ReactNode } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
@@ -8,8 +8,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ReserveClientDialog } from "@/components/reserve-client-dialog";
+import { Search, X } from "lucide-react";
 
 const ROW_LIMIT = 1000;
+const STATUTS = ["Tous", "Disponible", "Réservé", "Vendu/Archivé"];
+const ENERGIES = [
+  { label: "Diesel", stem: "diesel" },
+  { label: "Essence", stem: "essence" },
+  { label: "Électrique", stem: "electr" },
+];
 
 function parseClientId(raw: string | null | undefined): number | null {
   if (!raw) return null;
@@ -19,7 +26,9 @@ function parseClientId(raw: string | null | undefined): number | null {
 
 export default function MoteursPage() {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statut, setStatut] = useState("Tous");
+  const [energie, setEnergie] = useState<string | null>(null);
   const [moteurs, setMoteurs] = useState<any[]>([]);
   const [counts, setCounts] = useState({ total: 0, dispo: 0, reserve: 0, archive: 0 });
   const [loading, setLoading] = useState(false);
@@ -27,10 +36,21 @@ export default function MoteursPage() {
   const [reserveTarget, setReserveTarget] = useState<{ id: number; code: string } | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
 
-  function applySearch<T extends { or: (f: string) => T }>(q: T): T {
-    return search
-      ? q.or(`nom_type_moteur.ilike.%${search}%,code_moteur.ilike.%${search}%,num_serie.ilike.%${search}%`)
-      : q;
+  // Debounce de la recherche : évite de lancer 5 requêtes à chaque frappe.
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => clearTimeout(id);
+  }, [search]);
+
+  function applyFilters(q: any): any {
+    let r = q;
+    if (debouncedSearch) {
+      r = r.or(
+        `nom_type_moteur.ilike.%${debouncedSearch}%,code_moteur.ilike.%${debouncedSearch}%,num_serie.ilike.%${debouncedSearch}%,marque.ilike.%${debouncedSearch}%`
+      );
+    }
+    if (energie) r = r.ilike("energie", `%${energie}%`);
+    return r;
   }
 
   const loadMoteurs = useCallback(async () => {
@@ -38,17 +58,17 @@ export default function MoteursPage() {
 
     let rowsQ = supabase
       .from("v_moteurs_dispo")
-      .select("n_moteur, code_moteur, nom_type_moteur, num_serie, marque, energie, prix_achat_moteur, est_disponible, archiver, resa_client_moteur, num_reception")
+      .select(
+        "n_moteur, code_moteur, nom_type_moteur, num_serie, marque, energie, prix_achat_moteur, est_disponible, archiver, resa_client_moteur, num_reception"
+      )
       .order("n_moteur", { ascending: false })
       .limit(ROW_LIMIT);
-    rowsQ = applySearch(rowsQ as any) as any;
+    rowsQ = applyFilters(rowsQ);
     if (statut === "Disponible") rowsQ = rowsQ.eq("est_disponible", 1).is("resa_client_moteur", null);
     if (statut === "Réservé") rowsQ = rowsQ.eq("est_disponible", 1).not("resa_client_moteur", "is", null);
     if (statut === "Vendu/Archivé") rowsQ = rowsQ.eq("est_disponible", 0);
 
-    const countBase = () => applySearch(
-      supabase.from("v_moteurs_dispo").select("*", { count: "exact", head: true }) as any
-    );
+    const countBase = () => applyFilters(supabase.from("v_moteurs_dispo").select("*", { count: "exact", head: true }));
 
     const [rowsRes, totalRes, dispoRes, reserveRes, archiveRes] = await Promise.all([
       rowsQ,
@@ -60,7 +80,7 @@ export default function MoteursPage() {
 
     const rows = rowsRes.data || [];
 
-    // Fallback prix : pour les moteurs sans prix_achat_moteur, utiliser la moyenne de la réception
+    // Fallback prix : moyenne de la réception si prix individuel absent
     const receptionIds = [...new Set(rows.map((m: any) => m.num_reception).filter(Boolean))] as number[];
     const avgByReception: Record<number, number> = {};
     if (receptionIds.length > 0) {
@@ -76,14 +96,12 @@ export default function MoteursPage() {
     }
     const enriched = rows.map((m: any) => ({
       ...m,
-      prix_affiche: m.prix_achat_moteur && m.prix_achat_moteur > 0
-        ? m.prix_achat_moteur
-        : avgByReception[m.num_reception],
+      prix_affiche:
+        m.prix_achat_moteur && m.prix_achat_moteur > 0 ? m.prix_achat_moteur : avgByReception[m.num_reception],
       prix_est_moyenne: !(m.prix_achat_moteur && m.prix_achat_moteur > 0) && !!avgByReception[m.num_reception],
       _resa_client_id: parseClientId(m.resa_client_moteur),
     }));
 
-    // Resolve client names for reserved moteurs
     const clientIds = Array.from(
       new Set(enriched.map((m: any) => m._resa_client_id).filter((x: number | null): x is number => x !== null))
     );
@@ -106,7 +124,7 @@ export default function MoteursPage() {
       archive: archiveRes.count || 0,
     });
     setLoading(false);
-  }, [search, statut]);
+  }, [debouncedSearch, statut, energie]);
 
   useEffect(() => {
     loadMoteurs();
@@ -116,10 +134,7 @@ export default function MoteursPage() {
     setBusyId(n_moteur);
     const { error } = await supabase
       .from("tbl_moteurs")
-      .update({
-        resa_client_moteur: String(n_client),
-        date_resa_moteur: new Date().toISOString(),
-      })
+      .update({ resa_client_moteur: String(n_client), date_resa_moteur: new Date().toISOString() })
       .eq("n_moteur", n_moteur);
     setBusyId(null);
     if (error) {
@@ -135,10 +150,7 @@ export default function MoteursPage() {
     setBusyId(n_moteur);
     const { error } = await supabase
       .from("tbl_moteurs")
-      .update({
-        resa_client_moteur: null,
-        date_resa_moteur: null,
-      })
+      .update({ resa_client_moteur: null, date_resa_moteur: null })
       .eq("n_moteur", n_moteur);
     setBusyId(null);
     if (error) {
@@ -148,152 +160,202 @@ export default function MoteursPage() {
     await loadMoteurs();
   }
 
+  // Dérive l'état + les rendus partagés entre cartes (mobile) et table (desktop)
+  function derive(m: any) {
+    const code = m.nom_type_moteur || m.code_moteur || `Moteur #${m.n_moteur}`;
+    const isArchived = !!m.archiver;
+    const isSold = m.est_disponible === 0 && !isArchived;
+    const isReserved = !isArchived && !isSold && !!m.resa_client_moteur;
+    const isAvailable = !isArchived && !isSold && !isReserved;
+    const clientLabel =
+      m._resa_client_id !== null ? clientNamesById[m._resa_client_id] || `Client #${m._resa_client_id}` : null;
+    return { code, isArchived, isSold, isReserved, isAvailable, clientLabel };
+  }
+
+  function statusBadge(d: ReturnType<typeof derive>): ReactNode {
+    if (d.isArchived)
+      return <Badge className="bg-[rgba(90,100,120,0.10)] text-text-muted border border-[rgba(90,100,120,0.20)]">Archivé</Badge>;
+    if (d.isSold)
+      return <Badge className="bg-[rgba(148,163,184,0.15)] text-slate-600 border border-[rgba(148,163,184,0.25)]">Vendu</Badge>;
+    if (d.isReserved)
+      return <Badge className="bg-[rgba(251,191,36,0.10)] text-amber-600 border border-[rgba(251,191,36,0.20)]">Réservé</Badge>;
+    return <Badge className="bg-[rgba(52,211,153,0.10)] text-emerald-600 border border-[rgba(52,211,153,0.20)]">Disponible</Badge>;
+  }
+
+  function priceLabel(m: any): ReactNode {
+    if (!m.prix_affiche) return <span className="text-text-muted">—</span>;
+    return (
+      <span title={m.prix_est_moyenne ? "Moyenne réception (prix individuel non saisi)" : "Prix d'achat saisi"}>
+        {Math.round(m.prix_affiche).toLocaleString("fr-FR")} €{m.prix_est_moyenne && <span className="ml-1 text-text-muted">~</span>}
+      </span>
+    );
+  }
+
+  function action(m: any, d: ReturnType<typeof derive>): ReactNode {
+    if (d.isAvailable)
+      return (
+        <Button size="sm" variant="outline" onClick={() => setReserveTarget({ id: m.n_moteur, code: d.code })} disabled={busyId === m.n_moteur}>
+          Réserver
+        </Button>
+      );
+    if (d.isReserved)
+      return (
+        <div className="flex items-center gap-2">
+          {m._resa_client_id !== null ? (
+            <Link href={`/clients/${m._resa_client_id}`} className="max-w-[180px] truncate text-sm font-medium text-brand hover:underline" title={d.clientLabel || ""}>
+              {d.clientLabel}
+            </Link>
+          ) : (
+            <span className="text-sm text-text-dim">—</span>
+          )}
+          <Button size="xs" variant="ghost" onClick={() => libererMoteur(m.n_moteur, d.code)} disabled={busyId === m.n_moteur} className="text-text-dim hover:text-destructive">
+            Libérer
+          </Button>
+        </div>
+      );
+    return <span className="text-xs text-text-muted">—</span>;
+  }
+
+  const chip = (active: boolean) =>
+    `rounded-full px-3 py-1.5 text-xs font-medium transition ${
+      active ? "bg-brand text-white" : "bg-surface-alt text-text-dim hover:bg-surface-hover"
+    }`;
+
   return (
     <div>
       <PageHeader title="Identification Moteurs" description="Recherche et consultation du stock moteurs" />
 
-      <div className="flex flex-wrap gap-3 mb-6">
+      {/* Recherche */}
+      <div className="relative mb-3 max-w-xl">
+        <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
         <Input
-          placeholder="Rechercher (code moteur, num série...)"
+          placeholder="Rechercher (code, n° série, marque…)"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="max-w-sm bg-surface-alt border-border text-foreground placeholder:text-text-muted"
+          className="h-12 rounded-xl border-border bg-surface-alt pl-10 pr-10 text-base text-foreground placeholder:text-text-muted"
         />
-        <select
-          value={statut}
-          onChange={(e) => setStatut(e.target.value)}
-          className="border border-border rounded-lg px-3 py-2 text-sm bg-surface-alt text-foreground"
-        >
-          <option>Tous</option>
-          <option>Disponible</option>
-          <option>Réservé</option>
-          <option>Vendu/Archivé</option>
-        </select>
+        {search && (
+          <button
+            onClick={() => setSearch("")}
+            className="absolute right-2 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-text-muted hover:bg-surface-hover"
+            aria-label="Effacer"
+          >
+            <X size={16} />
+          </button>
+        )}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Résultats</p><p className="text-2xl font-bold text-brand">{counts.total.toLocaleString("fr-FR")}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Disponibles</p><p className="text-2xl font-bold text-emerald-600">{counts.dispo.toLocaleString("fr-FR")}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Réservés</p><p className="text-2xl font-bold text-amber-600">{counts.reserve.toLocaleString("fr-FR")}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-text-dim font-semibold uppercase">Vendus/Archivés</p><p className="text-2xl font-bold text-text-muted">{counts.archive.toLocaleString("fr-FR")}</p></CardContent></Card>
+      {/* Filtres en chips (statut + énergie) */}
+      <div className="mb-2 flex flex-wrap gap-2">
+        {STATUTS.map((s) => (
+          <button key={s} onClick={() => setStatut(s)} className={chip(statut === s)}>
+            {s}
+          </button>
+        ))}
       </div>
+      <div className="mb-6 flex flex-wrap gap-2">
+        <button onClick={() => setEnergie(null)} className={chip(!energie) + " ring-1 ring-border"}>
+          Toutes énergies
+        </button>
+        {ENERGIES.map((e) => (
+          <button key={e.stem} onClick={() => setEnergie(energie === e.stem ? null : e.stem)} className={chip(energie === e.stem) + " ring-1 ring-border"}>
+            {e.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Compteurs */}
+      <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Card><CardContent className="p-4"><p className="text-xs font-semibold uppercase text-text-dim">Résultats</p><p className="text-2xl font-bold text-brand">{counts.total.toLocaleString("fr-FR")}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs font-semibold uppercase text-text-dim">Disponibles</p><p className="text-2xl font-bold text-emerald-600">{counts.dispo.toLocaleString("fr-FR")}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs font-semibold uppercase text-text-dim">Réservés</p><p className="text-2xl font-bold text-amber-600">{counts.reserve.toLocaleString("fr-FR")}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs font-semibold uppercase text-text-dim">Vendus/Archivés</p><p className="text-2xl font-bold text-text-muted">{counts.archive.toLocaleString("fr-FR")}</p></CardContent></Card>
+      </div>
+
       {counts.total > moteurs.length && !loading && (
-        <p className="text-xs text-text-muted mb-3">Affichage des {moteurs.length.toLocaleString("fr-FR")} derniers moteurs sur {counts.total.toLocaleString("fr-FR")} — affinez via la recherche.</p>
+        <p className="mb-3 text-xs text-text-muted">
+          Affichage des {moteurs.length.toLocaleString("fr-FR")} derniers sur {counts.total.toLocaleString("fr-FR")} — affinez via la recherche.
+        </p>
       )}
 
       {loading ? (
-        <div className="text-center py-12 text-text-muted">Chargement...</div>
+        <div className="py-12 text-center text-text-muted">Chargement…</div>
+      ) : moteurs.length === 0 ? (
+        <div className="rounded-[14px] border border-border bg-surface py-12 text-center italic text-text-muted">Aucun moteur trouvé</div>
       ) : (
-        <div className="bg-surface border border-border rounded-[14px] overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-surface-alt text-text-dim text-xs uppercase">
-                <tr>
-                  <th className="px-4 py-3 text-left">N°</th>
-                  <th className="px-4 py-3 text-left">Code moteur</th>
-                  <th className="px-4 py-3 text-left">Num série</th>
-                  <th className="px-4 py-3 text-left">Marque</th>
-                  <th className="px-4 py-3 text-left">Énergie</th>
-                  <th className="px-4 py-3 text-right">Prix achat</th>
-                  <th className="px-4 py-3 text-center">Statut</th>
-                  <th className="px-4 py-3 text-left">Client / Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {moteurs.map((m) => {
-                  const code = m.nom_type_moteur || m.code_moteur || `Moteur #${m.n_moteur}`;
-                  const isArchived = !!m.archiver;
-                  const isSold = m.est_disponible === 0 && !isArchived;
-                  const isReserved = !isArchived && !isSold && !!m.resa_client_moteur;
-                  const isAvailable = !isArchived && !isSold && !isReserved;
-                  const clientLabel = m._resa_client_id !== null
-                    ? clientNamesById[m._resa_client_id] || `Client #${m._resa_client_id}`
-                    : null;
-                  return (
-                    <tr key={m.n_moteur} className="hover:bg-surface-hover transition-colors">
-                      <td className="px-4 py-3 font-mono text-xs text-text-muted">{m.n_moteur}</td>
-                      <td className="px-4 py-3 font-semibold text-foreground">{code}</td>
-                      <td className="px-4 py-3 text-text-dim">{m.num_serie || "—"}</td>
-                      <td className="px-4 py-3 text-text-dim">{m.marque || "—"}</td>
-                      <td className="px-4 py-3 text-text-dim">{m.energie || "—"}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-text-dim">
-                        {m.prix_affiche ? (
-                          <span title={m.prix_est_moyenne ? "Moyenne réception (prix individuel non saisi)" : "Prix d'achat saisi"}>
-                            {Math.round(m.prix_affiche).toLocaleString("fr-FR")} €
-                            {m.prix_est_moyenne && <span className="ml-1 text-text-muted">~</span>}
-                          </span>
-                        ) : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {isArchived ? (
-                          <Badge className="bg-[rgba(90,100,120,0.10)] text-text-muted border border-[rgba(90,100,120,0.20)] hover:bg-[rgba(90,100,120,0.15)]">Archivé</Badge>
-                        ) : isSold ? (
-                          <Badge className="bg-[rgba(148,163,184,0.15)] text-slate-600 border border-[rgba(148,163,184,0.25)] hover:bg-[rgba(148,163,184,0.20)]">Vendu</Badge>
-                        ) : isReserved ? (
-                          <Badge className="bg-[rgba(251,191,36,0.10)] text-amber-600 border border-[rgba(251,191,36,0.20)] hover:bg-[rgba(251,191,36,0.15)]">Réservé</Badge>
-                        ) : (
-                          <Badge className="bg-[rgba(52,211,153,0.10)] text-emerald-600 border border-[rgba(52,211,153,0.20)] hover:bg-[rgba(52,211,153,0.15)]">Disponible</Badge>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {isAvailable ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setReserveTarget({ id: m.n_moteur, code })}
-                            disabled={busyId === m.n_moteur}
-                          >
-                            Réserver
-                          </Button>
-                        ) : isReserved ? (
-                          <div className="flex items-center gap-2">
-                            {m._resa_client_id !== null ? (
-                              <Link
-                                href={`/clients/${m._resa_client_id}`}
-                                className="text-brand hover:underline text-sm font-medium truncate max-w-[180px]"
-                                title={clientLabel || ""}
-                              >
-                                {clientLabel}
-                              </Link>
-                            ) : (
-                              <span className="text-text-dim text-sm">—</span>
-                            )}
-                            <Button
-                              size="xs"
-                              variant="ghost"
-                              onClick={() => libererMoteur(m.n_moteur, code)}
-                              disabled={busyId === m.n_moteur}
-                              className="text-text-dim hover:text-destructive"
-                            >
-                              Libérer
-                            </Button>
-                          </div>
-                        ) : (
-                          <span className="text-text-muted text-xs">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        <>
+          {/* Mobile : cartes */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:hidden">
+            {moteurs.map((m) => {
+              const d = derive(m);
+              return (
+                <div key={m.n_moteur} className="rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-foreground">{d.code}</p>
+                      <p className="font-mono text-xs text-text-muted">n°{m.n_moteur}</p>
+                    </div>
+                    {statusBadge(d)}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-1.5 text-xs text-text-dim">
+                    {m.marque && <span className="rounded-full bg-surface-hover px-2 py-0.5">{m.marque}</span>}
+                    {m.energie && <span className="rounded-full bg-surface-hover px-2 py-0.5">{m.energie}</span>}
+                    {m.num_serie && <span className="rounded-full bg-surface-hover px-2 py-0.5">SN {m.num_serie}</span>}
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
+                    <span className="text-sm font-semibold text-foreground">{priceLabel(m)}</span>
+                    {action(m, d)}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          {moteurs.length === 0 && (
-            <p className="text-center py-10 text-text-muted italic">Aucun moteur trouvé</p>
-          )}
-        </div>
+
+          {/* Desktop : table */}
+          <div className="hidden overflow-hidden rounded-[14px] border border-border bg-surface md:block">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-surface-alt text-xs uppercase text-text-dim">
+                  <tr>
+                    <th className="px-4 py-3 text-left">N°</th>
+                    <th className="px-4 py-3 text-left">Code moteur</th>
+                    <th className="px-4 py-3 text-left">Num série</th>
+                    <th className="px-4 py-3 text-left">Marque</th>
+                    <th className="px-4 py-3 text-left">Énergie</th>
+                    <th className="px-4 py-3 text-right">Prix achat</th>
+                    <th className="px-4 py-3 text-center">Statut</th>
+                    <th className="px-4 py-3 text-left">Client / Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {moteurs.map((m) => {
+                    const d = derive(m);
+                    return (
+                      <tr key={m.n_moteur} className="transition-colors hover:bg-surface-hover">
+                        <td className="px-4 py-3 font-mono text-xs text-text-muted">{m.n_moteur}</td>
+                        <td className="px-4 py-3 font-semibold text-foreground">{d.code}</td>
+                        <td className="px-4 py-3 text-text-dim">{m.num_serie || "—"}</td>
+                        <td className="px-4 py-3 text-text-dim">{m.marque || "—"}</td>
+                        <td className="px-4 py-3 text-text-dim">{m.energie || "—"}</td>
+                        <td className="px-4 py-3 text-right tabular-nums text-text-dim">{priceLabel(m)}</td>
+                        <td className="px-4 py-3 text-center">{statusBadge(d)}</td>
+                        <td className="px-4 py-3">{action(m, d)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
 
       <ReserveClientDialog
         open={reserveTarget !== null}
         onClose={() => setReserveTarget(null)}
-        onConfirm={(clientId) =>
-          reserveTarget ? reserveMoteur(reserveTarget.id, clientId) : undefined
-        }
+        onConfirm={(clientId) => (reserveTarget ? reserveMoteur(reserveTarget.id, clientId) : undefined)}
         title="Réserver ce moteur"
-        pieceLabel={
-          reserveTarget ? `${reserveTarget.code} — moteur n°${reserveTarget.id}` : ""
-        }
+        pieceLabel={reserveTarget ? `${reserveTarget.code} — moteur n°${reserveTarget.id}` : ""}
       />
     </div>
   );

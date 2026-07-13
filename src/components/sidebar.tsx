@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, TrendingUp, Target, BarChart3, Euro,
   PackageOpen, Search, Cog, ClipboardList, History,
-  Wrench, Building2, Users, LogOut, Inbox, RefreshCw,
+  Wrench, Building2, Users, LogOut, Inbox, RefreshCw, X,
 } from "lucide-react";
 
 const navSections = [
@@ -41,9 +41,11 @@ const navSections = [
 interface SidebarProps {
   userName?: string;
   userRole?: string;
+  open?: boolean;
+  onClose?: () => void;
 }
 
-export function Sidebar({ userName, userRole }: SidebarProps) {
+export function Sidebar({ userName, userRole, open = false, onClose = () => {} }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -55,9 +57,21 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
   }
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-surface border-r border-border flex flex-col">
+    <aside
+      className={cn(
+        "fixed left-0 top-0 z-50 flex h-screen w-64 flex-col border-r border-border bg-surface transition-transform duration-200 md:z-40 md:translate-x-0",
+        open ? "translate-x-0" : "-translate-x-full"
+      )}
+    >
       {/* Header */}
-      <div className="p-6 text-center border-b border-border">
+      <div className="relative border-b border-border p-6 text-center">
+        <button
+          onClick={onClose}
+          aria-label="Fermer le menu"
+          className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-lg text-text-dim transition hover:bg-surface-hover md:hidden"
+        >
+          <X size={18} />
+        </button>
         <h1 className="font-heading text-lg font-bold tracking-wide text-foreground">MULTIREX AUTO</h1>
         {userName && (
           <p className="text-xs mt-1 text-text-dim">{userName} ({roleLabel})</p>
@@ -69,6 +83,7 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
         {/* Home */}
         <Link
           href="/dashboard"
+          onClick={onClose}
           className={cn(
             "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
             pathname === "/dashboard"
@@ -89,6 +104,7 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={onClose}
                   className={cn(
                     "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
                     pathname === item.href
@@ -111,6 +127,7 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
             <div className="space-y-1">
               <Link
                 href="/admin/utilisateurs"
+                onClick={onClose}
                 className={cn(
                   "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
                   pathname === "/admin/utilisateurs"
@@ -122,6 +139,7 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
               </Link>
               <Link
                 href="/admin/offres"
+                onClick={onClose}
                 className={cn(
                   "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
                   pathname === "/admin/offres"
@@ -133,6 +151,7 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
               </Link>
               <Link
                 href="/admin/synchronisation"
+                onClick={onClose}
                 className={cn(
                   "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
                   pathname === "/admin/synchronisation"
