@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ReserveClientDialog } from "@/components/reserve-client-dialog";
+import { SortHeader, type SortDir } from "@/components/sortable";
 import { Search, X } from "lucide-react";
 
 const ROW_LIMIT = 1000;
@@ -29,6 +30,8 @@ export default function MoteursPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statut, setStatut] = useState("Tous");
   const [energie, setEnergie] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<string>("n_moteur");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [moteurs, setMoteurs] = useState<any[]>([]);
   const [counts, setCounts] = useState({ total: 0, dispo: 0, reserve: 0, archive: 0 });
   const [loading, setLoading] = useState(false);
@@ -61,7 +64,7 @@ export default function MoteursPage() {
       .select(
         "n_moteur, code_moteur, nom_type_moteur, num_serie, marque, energie, prix_achat_moteur, est_disponible, archiver, resa_client_moteur, num_reception"
       )
-      .order("n_moteur", { ascending: false })
+      .order(sortKey, { ascending: sortDir === "asc" })
       .limit(ROW_LIMIT);
     rowsQ = applyFilters(rowsQ);
     if (statut === "Disponible") rowsQ = rowsQ.eq("est_disponible", 1).is("resa_client_moteur", null);
@@ -124,7 +127,15 @@ export default function MoteursPage() {
       archive: archiveRes.count || 0,
     });
     setLoading(false);
-  }, [debouncedSearch, statut, energie]);
+  }, [debouncedSearch, statut, energie, sortKey, sortDir]);
+
+  function onSort(col: string) {
+    if (col === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortKey(col);
+      setSortDir("asc");
+    }
+  }
 
   useEffect(() => {
     loadMoteurs();
@@ -317,12 +328,12 @@ export default function MoteursPage() {
               <table className="w-full text-sm">
                 <thead className="bg-surface-alt text-xs uppercase text-text-dim">
                   <tr>
-                    <th className="px-4 py-3 text-left">N°</th>
-                    <th className="px-4 py-3 text-left">Code moteur</th>
-                    <th className="px-4 py-3 text-left">Num série</th>
-                    <th className="px-4 py-3 text-left">Marque</th>
-                    <th className="px-4 py-3 text-left">Énergie</th>
-                    <th className="px-4 py-3 text-right">Prix achat</th>
+                    <SortHeader label="N°" active={sortKey === "n_moteur"} dir={sortDir} onClick={() => onSort("n_moteur")} />
+                    <SortHeader label="Code moteur" active={sortKey === "nom_type_moteur"} dir={sortDir} onClick={() => onSort("nom_type_moteur")} />
+                    <SortHeader label="Num série" active={sortKey === "num_serie"} dir={sortDir} onClick={() => onSort("num_serie")} />
+                    <SortHeader label="Marque" active={sortKey === "marque"} dir={sortDir} onClick={() => onSort("marque")} />
+                    <SortHeader label="Énergie" active={sortKey === "energie"} dir={sortDir} onClick={() => onSort("energie")} />
+                    <SortHeader label="Prix achat" align="right" active={sortKey === "prix_achat_moteur"} dir={sortDir} onClick={() => onSort("prix_achat_moteur")} />
                     <th className="px-4 py-3 text-center">Statut</th>
                     <th className="px-4 py-3 text-left">Client / Action</th>
                   </tr>
