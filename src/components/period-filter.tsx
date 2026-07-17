@@ -1,29 +1,32 @@
 "use client";
 
-export type Period = "all" | "year" | "semester" | "quarter" | "month";
+export type Period = "all" | "12m" | "6m" | "3m" | "1m";
 
 export const PERIODS: { key: Period; label: string }[] = [
   { key: "all", label: "Tout" },
-  { key: "year", label: "Cette année" },
-  { key: "semester", label: "Ce semestre" },
-  { key: "quarter", label: "Ce trimestre" },
-  { key: "month", label: "Ce mois" },
+  { key: "12m", label: "12 mois" },
+  { key: "6m", label: "6 mois" },
+  { key: "3m", label: "3 mois" },
+  { key: "1m", label: "1 mois" },
 ];
 
-/** Début (inclus) de la période courante, ou null pour "tout". */
+const MONTHS: Record<Exclude<Period, "all">, number> = {
+  "12m": 12,
+  "6m": 6,
+  "3m": 3,
+  "1m": 1,
+};
+
+/** Début (inclus) d'une fenêtre glissante finissant aujourd'hui, ou null pour "tout". */
 export function periodStart(p: Period): Date | null {
   if (p === "all") return null;
   const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  if (p === "year") return new Date(y, 0, 1);
-  if (p === "semester") return new Date(y, m < 6 ? 0 : 6, 1);
-  if (p === "quarter") return new Date(y, Math.floor(m / 3) * 3, 1);
-  if (p === "month") return new Date(y, m, 1);
-  return null;
+  const start = new Date(now.getFullYear(), now.getMonth() - MONTHS[p], now.getDate());
+  start.setHours(0, 0, 0, 0);
+  return start;
 }
 
-/** La date (ISO) tombe-t-elle dans la période ? (vides exclus sauf "tout") */
+/** La date (ISO) tombe-t-elle dans la fenêtre ? (vides exclus sauf "tout") */
 export function inPeriod(dateStr: string | null | undefined, p: Period): boolean {
   const start = periodStart(p);
   if (!start) return true;
