@@ -411,7 +411,14 @@ export default function FournisseurProfilePage({
           <tbody className="divide-y divide-border">
             {fReceptions.map((r) => (
               <tr key={r.n_reception} className="hover:bg-surface-hover transition-colors">
-                <td className="px-4 py-3 font-mono text-xs text-text-muted">{r.n_reception}</td>
+                <td className="px-4 py-3">
+                  <Link
+                    href={`/receptions/${r.n_reception}`}
+                    className="font-mono text-xs font-semibold text-brand hover:underline"
+                  >
+                    #{r.n_reception}
+                  </Link>
+                </td>
                 <td className="px-4 py-3 text-text-dim">
                   {r.date_achat ? new Date(r.date_achat).toLocaleDateString("fr-FR") : "—"}
                 </td>
