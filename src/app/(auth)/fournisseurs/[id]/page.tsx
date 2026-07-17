@@ -14,6 +14,7 @@ import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PeriodFilter, inPeriod, type Period } from "@/components/period-filter";
 
 type Fournisseur = {
   n_fournisseur: number;
@@ -71,6 +72,7 @@ export default function FournisseurProfilePage({
   const [moteurs, setMoteurs] = useState<Moteur[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [period, setPeriod] = useState<Period>("all");
 
   useEffect(() => {
     if (!Number.isFinite(id)) {
@@ -218,14 +220,19 @@ export default function FournisseurProfilePage({
     );
   }
 
-  // Stats
-  const totalAchatHT = receptions.reduce((s, r) => s + (r.montant_ht || 0), 0);
-  const nbMoteurs = moteurs.length;
-  const moteursVendus = moteurs.filter((m) => m.vendu);
+  // Filtre période (sur la date d'achat / réception)
+  const fReceptions = receptions.filter((r) => inPeriod(r.date_achat, period));
+  const fMoteurs = moteurs.filter((m) => inPeriod(m.date_achat, period));
+
+  // Stats (sur la période sélectionnée)
+  const totalAchatHT = fReceptions.reduce((s, r) => s + (r.montant_ht || 0), 0);
+  const nbMoteurs = fMoteurs.length;
+  const moteursVendus = fMoteurs.filter((m) => m.vendu);
   const nbVendus = moteursVendus.length;
+  const nbEnStock = nbMoteurs - nbVendus;
   const totalVenteHT = moteursVendus.reduce((s, m) => s + (m.prix_vente || 0), 0);
 
-  const moteursPrixAchat = moteurs.filter((m) => (m.prix_achat || 0) > 0);
+  const moteursPrixAchat = fMoteurs.filter((m) => (m.prix_achat || 0) > 0);
   const prixAchatMoyen =
     moteursPrixAchat.length > 0
       ? moteursPrixAchat.reduce((s, m) => s + (m.prix_achat || 0), 0) / moteursPrixAchat.length
@@ -334,39 +341,16 @@ export default function FournisseurProfilePage({
         </Card>
       </div>
 
+      {/* Période */}
+      <PeriodFilter value={period} onChange={setPeriod} />
+
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-text-dim font-semibold uppercase">Réceptions</p>
-            <p className="text-2xl font-bold text-foreground">{receptions.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-text-dim font-semibold uppercase">Total achats HT</p>
-            <p className="text-2xl font-bold text-brand">{fmtPrice(totalAchatHT)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-text-dim font-semibold uppercase">Moteurs reçus</p>
-            <p className="text-2xl font-bold text-foreground">{nbMoteurs}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-text-dim font-semibold uppercase">Moteurs vendus</p>
-            <p className="text-2xl font-bold text-emerald-600">
-              {nbVendus}
-              {nbMoteurs > 0 && (
-                <span className="text-sm text-text-muted ml-1">
-                  ({Math.round((nbVendus / nbMoteurs) * 100)}%)
-                </span>
-              )}
-            </p>
-          </CardContent>
-        </Card>
+      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-5">
+        <Card><CardContent className="p-4"><p className="text-xs font-semibold uppercase text-text-dim">Réceptions</p><p className="text-2xl font-bold text-foreground">{fReceptions.length}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs font-semibold uppercase text-text-dim">Moteurs reçus</p><p className="text-2xl font-bold text-foreground">{nbMoteurs}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs font-semibold uppercase text-text-dim">Encore en stock</p><p className="text-2xl font-bold text-emerald-600">{nbEnStock}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs font-semibold uppercase text-text-dim">Vendus</p><p className="text-2xl font-bold text-foreground">{nbVendus}{nbMoteurs > 0 && <span className="ml-1 text-sm text-text-muted">({Math.round((nbVendus / nbMoteurs) * 100)}%)</span>}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs font-semibold uppercase text-text-dim">Total achats HT</p><p className="text-2xl font-bold text-brand">{fmtPrice(totalAchatHT)}</p></CardContent></Card>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -412,7 +396,7 @@ export default function FournisseurProfilePage({
       </div>
 
       {/* Réceptions */}
-      <h3 className="font-semibold text-foreground mb-3">Réceptions ({receptions.length})</h3>
+      <h3 className="font-semibold text-foreground mb-3">Réceptions ({fReceptions.length})</h3>
       <div className="bg-surface border border-border rounded-[14px] overflow-hidden mb-6">
         <table className="w-full text-sm">
           <thead className="bg-surface-alt text-text-dim text-xs uppercase">
@@ -425,7 +409,7 @@ export default function FournisseurProfilePage({
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {receptions.map((r) => (
+            {fReceptions.map((r) => (
               <tr key={r.n_reception} className="hover:bg-surface-hover transition-colors">
                 <td className="px-4 py-3 font-mono text-xs text-text-muted">{r.n_reception}</td>
                 <td className="px-4 py-3 text-text-dim">
@@ -450,13 +434,13 @@ export default function FournisseurProfilePage({
             ))}
           </tbody>
         </table>
-        {receptions.length === 0 && (
+        {fReceptions.length === 0 && (
           <p className="text-center py-10 text-text-muted italic">Aucune réception</p>
         )}
       </div>
 
       {/* Moteurs */}
-      <h3 className="font-semibold text-foreground mb-3">Moteurs reçus ({moteurs.length})</h3>
+      <h3 className="font-semibold text-foreground mb-3">Moteurs reçus ({fMoteurs.length})</h3>
       <div className="bg-surface border border-border rounded-[14px] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -472,7 +456,7 @@ export default function FournisseurProfilePage({
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {moteurs.map((m) => {
+              {fMoteurs.map((m) => {
                 const marge =
                   m.prix_achat != null && m.prix_vente != null ? m.prix_vente - m.prix_achat : null;
                 return (
@@ -516,7 +500,7 @@ export default function FournisseurProfilePage({
             </tbody>
           </table>
         </div>
-        {moteurs.length === 0 && (
+        {fMoteurs.length === 0 && (
           <p className="text-center py-10 text-text-muted italic">Aucun moteur enregistré</p>
         )}
       </div>

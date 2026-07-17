@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PeriodFilter, inPeriod, type Period } from "@/components/period-filter";
 
 type Client = {
   n_client: number;
@@ -67,6 +68,7 @@ export default function ClientProfilePage({
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [period, setPeriod] = useState<Period>("all");
 
   useEffect(() => {
     if (!Number.isFinite(id)) {
@@ -251,10 +253,12 @@ export default function ClientProfilePage({
     );
   }
 
-  const totalDepense = achats.reduce((s, a) => s + (a.prix || 0), 0);
-  const nbMoteurs = achats.filter((a) => a.type === "Moteur").length;
-  const nbBoites = achats.filter((a) => a.type === "Boîte").length;
-  const dernierAchat = achats[0]?.date || null;
+  // Filtre période (sur la date d'achat) — les achats sont déjà triés du + récent au + ancien
+  const fAchats = achats.filter((a) => inPeriod(a.date, period));
+  const totalDepense = fAchats.reduce((s, a) => s + (a.prix || 0), 0);
+  const nbMoteurs = fAchats.filter((a) => a.type === "Moteur").length;
+  const nbBoites = fAchats.filter((a) => a.type === "Boîte").length;
+  const dernierAchat = fAchats[0]?.date || null;
   const fullName =
     [client.titre_contact, client.prenom_contact, client.nom_contact].filter(Boolean).join(" ") ||
     client.nom_usage ||
@@ -321,6 +325,9 @@ export default function ClientProfilePage({
           </CardContent>
         </Card>
       </div>
+
+      {/* Période */}
+      <PeriodFilter value={period} onChange={setPeriod} />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -397,7 +404,7 @@ export default function ClientProfilePage({
 
       {/* Historique des achats */}
       <h3 className="font-semibold text-foreground mb-3">
-        Historique des achats ({achats.length})
+        Historique des achats ({fAchats.length})
       </h3>
       <div className="bg-surface border border-border rounded-[14px] overflow-hidden">
         <table className="w-full text-sm">
@@ -411,7 +418,7 @@ export default function ClientProfilePage({
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {achats.map((a) => (
+            {fAchats.map((a) => (
               <tr key={a.key} className="hover:bg-surface-hover transition-colors">
                 <td className="px-4 py-3 text-text-dim">
                   {a.date ? new Date(a.date).toLocaleDateString("fr-FR") : "—"}
@@ -438,8 +445,8 @@ export default function ClientProfilePage({
             ))}
           </tbody>
         </table>
-        {achats.length === 0 && (
-          <p className="text-center py-10 text-text-muted italic">Aucun achat enregistré</p>
+        {fAchats.length === 0 && (
+          <p className="text-center py-10 text-text-muted italic">Aucun achat sur cette période</p>
         )}
       </div>
 
