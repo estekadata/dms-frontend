@@ -117,6 +117,18 @@ export default function SynchronisationPage() {
     <div>
       <PageHeader title="Synchronisation" description="Suivi des mises à jour Access → Supabase" />
 
+      <div className="mb-4 flex items-start gap-3 rounded-[14px] border border-brand-mid bg-brand-soft px-4 py-3">
+        <RefreshCw size={18} className="mt-0.5 shrink-0 text-brand" />
+        <div className="text-sm">
+          <p className="font-semibold text-foreground">Comment mettre à jour la base</p>
+          <p className="mt-0.5 text-text-dim">
+            Sur le PC, lancez l&apos;outil <span className="font-medium text-foreground">«&nbsp;Mettre à jour la base Multirex&nbsp;»</span> :
+            choisissez le fichier <span className="font-mono text-foreground">Achats_données.accdb</span>, puis
+            «&nbsp;Lancer la mise à jour&nbsp;». Cette page affiche ensuite l&apos;état de la dernière synchro.
+          </p>
+        </div>
+      </div>
+
       <div className="mb-4 flex justify-end">
         <Button variant="outline" size="sm" onClick={load} disabled={loading}>
           <RefreshCw size={14} className="mr-2" /> Rafraîchir
