@@ -195,7 +195,13 @@ export default function ReceptionsPage() {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <p className="truncate font-semibold text-foreground">{r.fournisseur || "—"}</p>
-                      <span className="shrink-0 font-mono text-xs text-text-muted">n°{r.n_reception}</span>
+                      <Link
+                        href={`/receptions/${r.n_reception}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="shrink-0 font-mono text-xs font-semibold text-brand hover:underline"
+                      >
+                        #{r.n_reception}
+                      </Link>
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-2 border-t border-border pt-2 text-sm text-text-dim">
                       <span>{r.date_reception ? new Date(r.date_reception).toLocaleDateString("fr-FR") : "—"} · {r.nb_moteurs ?? 0} mot.</span>
@@ -240,7 +246,15 @@ export default function ReceptionsPage() {
                             onClick={() => openDetail(r)}
                             className={`cursor-pointer transition-colors hover:bg-surface-hover ${selected?.n_reception === r.n_reception ? "bg-brand-soft" : ""}`}
                           >
-                            <td className="px-4 py-3 font-mono text-xs text-text-muted">{r.n_reception}</td>
+                            <td className="px-4 py-3">
+                              <Link
+                                href={`/receptions/${r.n_reception}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="font-mono text-xs font-semibold text-brand hover:underline"
+                              >
+                                #{r.n_reception}
+                              </Link>
+                            </td>
                             <td className="px-4 py-3 text-text-dim">{r.date_reception ? new Date(r.date_reception).toLocaleDateString("fr-FR") : "—"}</td>
                             <td className="px-4 py-3 font-medium text-foreground">
                               {r.fournisseur && fId ? (
