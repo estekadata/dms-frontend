@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
+import { SortHeader, useClientSort } from "@/components/sortable";
 import { Badge } from "@/components/ui/badge";
 
 type Tab = "Réceptions" | "Expéditions" | "Stats";
@@ -17,6 +18,9 @@ export default function HistoriquePage() {
   const [expeditions, setExpeditions] = useState<Expedition[]>([]);
   const [stats, setStats] = useState<Stats[]>([]);
   const [loading, setLoading] = useState(true);
+  const recSort = useClientSort(receptions);
+  const expSort = useClientSort(expeditions);
+  const statSort = useClientSort(stats);
 
   useEffect(() => {
     async function load() {
@@ -144,15 +148,15 @@ export default function HistoriquePage() {
                 <table className="w-full text-sm">
                   <thead className="bg-surface-alt text-text-dim text-xs uppercase">
                     <tr>
-                      <th className="px-4 py-3 text-left">N°</th>
-                      <th className="px-4 py-3 text-left">Date</th>
-                      <th className="px-4 py-3 text-left">Fournisseur</th>
-                      <th className="px-4 py-3 text-center">Moteurs</th>
-                      <th className="px-4 py-3 text-right">Montant</th>
+                      <SortHeader label="N°" active={recSort.sortKey === "n_reception"} dir={recSort.sortDir} onClick={() => recSort.onSort("n_reception")} />
+                      <SortHeader label="Date" active={recSort.sortKey === "date_reception"} dir={recSort.sortDir} onClick={() => recSort.onSort("date_reception")} />
+                      <SortHeader label="Fournisseur" active={recSort.sortKey === "fournisseur"} dir={recSort.sortDir} onClick={() => recSort.onSort("fournisseur")} />
+                      <SortHeader label="Moteurs" align="center" active={recSort.sortKey === "nb_moteurs"} dir={recSort.sortDir} onClick={() => recSort.onSort("nb_moteurs")} />
+                      <SortHeader label="Montant" align="right" active={recSort.sortKey === "montant_total"} dir={recSort.sortDir} onClick={() => recSort.onSort("montant_total")} />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {receptions.map((r, i) => (
+                    {recSort.sorted.map((r, i) => (
                       <tr key={`rec-r-${i}`} className="transition-colors hover:bg-surface-hover">
                         <td className="px-4 py-3 font-mono text-xs text-text-muted">{r.n_reception}</td>
                         <td className="px-4 py-3 text-text-dim">{r.date_reception ? new Date(r.date_reception).toLocaleDateString("fr-FR") : "—"}</td>
@@ -193,15 +197,15 @@ export default function HistoriquePage() {
                 <table className="w-full text-sm">
                   <thead className="bg-surface-alt text-text-dim text-xs uppercase">
                     <tr>
-                      <th className="px-4 py-3 text-left">N°</th>
-                      <th className="px-4 py-3 text-left">Date</th>
-                      <th className="px-4 py-3 text-left">Client</th>
-                      <th className="px-4 py-3 text-left">Code moteur</th>
-                      <th className="px-4 py-3 text-right">Prix vente</th>
+                      <SortHeader label="N°" active={expSort.sortKey === "n_expedition"} dir={expSort.sortDir} onClick={() => expSort.onSort("n_expedition")} />
+                      <SortHeader label="Date" active={expSort.sortKey === "date_validation"} dir={expSort.sortDir} onClick={() => expSort.onSort("date_validation")} />
+                      <SortHeader label="Client" active={expSort.sortKey === "client"} dir={expSort.sortDir} onClick={() => expSort.onSort("client")} />
+                      <SortHeader label="Code moteur" active={expSort.sortKey === "code_moteur"} dir={expSort.sortDir} onClick={() => expSort.onSort("code_moteur")} />
+                      <SortHeader label="Prix vente" align="right" active={expSort.sortKey === "prix_vente_moteur"} dir={expSort.sortDir} onClick={() => expSort.onSort("prix_vente_moteur")} />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {expeditions.map((e, i) => (
+                    {expSort.sorted.map((e, i) => (
                       <tr key={`exp-r-${i}`} className="transition-colors hover:bg-surface-hover">
                         <td className="px-4 py-3 font-mono text-xs text-text-muted">{e.n_expedition}</td>
                         <td className="px-4 py-3 text-text-dim">{e.date_validation ? new Date(e.date_validation).toLocaleDateString("fr-FR") : "—"}</td>
@@ -244,14 +248,14 @@ export default function HistoriquePage() {
               <table className="w-full text-sm">
                 <thead className="bg-surface-alt text-text-dim text-xs uppercase">
                   <tr>
-                    <th className="px-4 py-3 text-left">Mois</th>
-                    <th className="px-4 py-3 text-center">Moteurs reçus</th>
-                    <th className="px-4 py-3 text-center">Moteurs vendus</th>
+                    <SortHeader label="Mois" active={statSort.sortKey === "mois"} dir={statSort.sortDir} onClick={() => statSort.onSort("mois")} />
+                    <SortHeader label="Moteurs reçus" align="center" active={statSort.sortKey === "recus"} dir={statSort.sortDir} onClick={() => statSort.onSort("recus")} />
+                    <SortHeader label="Moteurs vendus" align="center" active={statSort.sortKey === "vendus"} dir={statSort.sortDir} onClick={() => statSort.onSort("vendus")} />
                     <th className="px-4 py-3 text-center">Solde</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {stats.map((s) => (
+                  {statSort.sorted.map((s) => (
                     <tr key={s.mois} className="transition-colors hover:bg-surface-hover">
                       <td className="px-4 py-3 font-semibold text-foreground">{s.mois}</td>
                       <td className="px-4 py-3 text-center tabular-nums text-text-dim">{s.recus}</td>
