@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { SortHeader, useClientSort } from "@/components/sortable";
 import { Badge } from "@/components/ui/badge";
 
 type User = {
@@ -53,6 +54,7 @@ export default function UtilisateursPage() {
   });
   const [saving, setSaving] = useState(false);
   const [createdCreds, setCreatedCreds] = useState<{ email: string; password: string; nom: string } | null>(null);
+  const { sorted, sortKey, sortDir, onSort } = useClientSort(users);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -288,17 +290,17 @@ export default function UtilisateursPage() {
           <table className="w-full text-sm">
             <thead className="bg-surface-alt text-text-dim text-xs uppercase">
               <tr>
-                <th className="px-4 py-3 text-left">Nom</th>
-                <th className="px-4 py-3 text-left">Email</th>
-                <th className="px-4 py-3 text-center">Rôle</th>
-                <th className="px-4 py-3 text-left">Créé le</th>
-                <th className="px-4 py-3 text-left">Dernière connexion</th>
-                <th className="px-4 py-3 text-center">Statut</th>
+                <SortHeader label="Nom" active={sortKey === "nom"} dir={sortDir} onClick={() => onSort("nom")} />
+                <SortHeader label="Email" active={sortKey === "email"} dir={sortDir} onClick={() => onSort("email")} />
+                <SortHeader label="Rôle" align="center" active={sortKey === "role"} dir={sortDir} onClick={() => onSort("role")} />
+                <SortHeader label="Créé le" active={sortKey === "created_at"} dir={sortDir} onClick={() => onSort("created_at")} />
+                <SortHeader label="Dernière connexion" active={sortKey === "last_login"} dir={sortDir} onClick={() => onSort("last_login")} />
+                <SortHeader label="Statut" align="center" active={sortKey === "actif"} dir={sortDir} onClick={() => onSort("actif")} />
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {users.map((u) => (
+              {sorted.map((u) => (
                 <tr key={u.id} className="hover:bg-surface-hover transition-colors">
                   <td className="px-4 py-3 font-medium text-foreground">{u.nom || "—"}</td>
                   <td className="px-4 py-3 text-text-dim font-mono text-xs">{u.email}</td>

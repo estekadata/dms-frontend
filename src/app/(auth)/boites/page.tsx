@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ReserveClientDialog } from "@/components/reserve-client-dialog";
+import { SortHeader, type SortDir } from "@/components/sortable";
 import { Search, X } from "lucide-react";
 
 const ROW_LIMIT = 1000;
@@ -23,6 +24,8 @@ export default function BoitesPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statut, setStatut] = useState("Tous");
+  const [sortKey, setSortKey] = useState<string>("n_bv");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [boites, setBoites] = useState<any[]>([]);
   const [counts, setCounts] = useState({ total: 0, dispo: 0, reserve: 0, vendu: 0 });
   const [loading, setLoading] = useState(false);
@@ -51,7 +54,7 @@ export default function BoitesPage() {
       .select(
         "n_bv, num_interne_bv, ref_bv, num_interne_moteur, achat_bv, prix_vte_bv, date_vente_bv, resa_client_bv, date_resa_bv, stock, vendu, est_disponible, n_reception"
       )
-      .order("n_bv", { ascending: false })
+      .order(sortKey, { ascending: sortDir === "asc" })
       .limit(ROW_LIMIT);
     rowsQ = applyFilters(rowsQ);
     if (statut === "Disponible") rowsQ = rowsQ.eq("est_disponible", 1).is("resa_client_bv", null);
@@ -92,7 +95,15 @@ export default function BoitesPage() {
       vendu: venduRes.count || 0,
     });
     setLoading(false);
-  }, [debouncedSearch, statut]);
+  }, [debouncedSearch, statut, sortKey, sortDir]);
+
+  function onSort(col: string) {
+    if (col === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortKey(col);
+      setSortDir("asc");
+    }
+  }
 
   useEffect(() => {
     loadBoites();
@@ -266,12 +277,12 @@ export default function BoitesPage() {
               <table className="w-full text-sm">
                 <thead className="bg-surface-alt text-xs uppercase text-text-dim">
                   <tr>
-                    <th className="px-4 py-3 text-left">N°</th>
-                    <th className="px-4 py-3 text-left">Réf BV</th>
-                    <th className="px-4 py-3 text-left">Num interne</th>
-                    <th className="px-4 py-3 text-left">Moteur lié</th>
-                    <th className="px-4 py-3 text-right">Prix achat</th>
-                    <th className="px-4 py-3 text-right">Prix vente</th>
+                    <SortHeader label="N°" active={sortKey === "n_bv"} dir={sortDir} onClick={() => onSort("n_bv")} />
+                    <SortHeader label="Réf BV" active={sortKey === "ref_bv"} dir={sortDir} onClick={() => onSort("ref_bv")} />
+                    <SortHeader label="Num interne" active={sortKey === "num_interne_bv"} dir={sortDir} onClick={() => onSort("num_interne_bv")} />
+                    <SortHeader label="Moteur lié" active={sortKey === "num_interne_moteur"} dir={sortDir} onClick={() => onSort("num_interne_moteur")} />
+                    <SortHeader label="Prix achat" align="right" active={sortKey === "achat_bv"} dir={sortDir} onClick={() => onSort("achat_bv")} />
+                    <SortHeader label="Prix vente" align="right" active={sortKey === "prix_vte_bv"} dir={sortDir} onClick={() => onSort("prix_vte_bv")} />
                     <th className="px-4 py-3 text-center">Statut</th>
                     <th className="px-4 py-3 text-left">Client / Action</th>
                   </tr>

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { SortHeader, useClientSort } from "@/components/sortable";
 
 const PAGE_SIZE = 200;
 
@@ -164,6 +165,7 @@ export default function ReservationsPage() {
   }
 
   const remaining = Math.max(0, total - rows.length);
+  const { sorted, sortKey, sortDir, onSort } = useClientSort(rows);
 
   return (
     <div>
@@ -220,7 +222,7 @@ export default function ReservationsPage() {
             <>
               {/* Mobile : cartes */}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:hidden">
-                {rows.map((r) => (
+                {sorted.map((r) => (
                   <div key={`m-${tab}-${r.id}`} className="rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -251,15 +253,15 @@ export default function ReservationsPage() {
                   <table className="w-full text-sm">
                     <thead className="bg-surface-alt text-text-dim text-xs uppercase">
                       <tr>
-                        <th className="px-4 py-3 text-left">N°</th>
-                        <th className="px-4 py-3 text-left">{tab === "moteurs" ? "Code moteur" : "Réf BV"}</th>
-                        <th className="px-4 py-3 text-left">Client</th>
-                        <th className="px-4 py-3 text-left">Date réservation</th>
+                        <SortHeader label="N°" active={sortKey === "id"} dir={sortDir} onClick={() => onSort("id")} />
+                        <SortHeader label={tab === "moteurs" ? "Code moteur" : "Réf BV"} active={sortKey === "code"} dir={sortDir} onClick={() => onSort("code")} />
+                        <SortHeader label="Client" active={sortKey === "clientLabel"} dir={sortDir} onClick={() => onSort("clientLabel")} />
+                        <SortHeader label="Date réservation" active={sortKey === "date_reservation"} dir={sortDir} onClick={() => onSort("date_reservation")} />
                         <th className="px-4 py-3 text-center">Statut</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {rows.map((r) => (
+                      {sorted.map((r) => (
                         <tr key={`${tab}-${r.id}`} className="transition-colors hover:bg-surface-hover">
                           <td className="px-4 py-3 font-mono text-xs text-text-muted">{r.id}</td>
                           <td className="px-4 py-3 font-semibold text-foreground">{r.code}</td>
