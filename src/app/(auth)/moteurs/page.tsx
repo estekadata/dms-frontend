@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ReserveClientDialog } from "@/components/reserve-client-dialog";
 import { SortHeader, type SortDir } from "@/components/sortable";
+import { MoteurStatuts } from "@/components/moteur-statuts";
 import { Search, X } from "lucide-react";
 
 const ROW_LIMIT = 1000;
@@ -62,7 +63,7 @@ export default function MoteursPage() {
     let rowsQ = supabase
       .from("v_moteurs_dispo")
       .select(
-        "n_moteur, code_moteur, nom_type_moteur, num_serie, marque, energie, prix_achat_moteur, est_disponible, archiver, resa_client_moteur, num_reception"
+        "n_moteur, code_moteur, nom_type_moteur, num_serie, marque, energie, prix_achat_moteur, est_disponible, archiver, resa_client_moteur, num_reception, compo_moteur, etat_moteur, n_affectation"
       )
       .order(sortKey, { ascending: sortDir === "asc" })
       .limit(ROW_LIMIT);
@@ -313,6 +314,7 @@ export default function MoteursPage() {
                     {m.energie && <span className="rounded-full bg-surface-hover px-2 py-0.5">{m.energie}</span>}
                     {m.num_serie && <span className="rounded-full bg-surface-hover px-2 py-0.5">SN {m.num_serie}</span>}
                   </div>
+                  <MoteurStatuts compo={m.compo_moteur} etat={m.etat_moteur} affect={m.n_affectation} className="mt-2" />
                   <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
                     <span className="text-sm font-semibold text-foreground">{priceLabel(m)}</span>
                     {action(m, d)}
@@ -344,7 +346,10 @@ export default function MoteursPage() {
                     return (
                       <tr key={m.n_moteur} className="transition-colors hover:bg-surface-hover">
                         <td className="px-4 py-3 font-mono text-xs text-text-muted">{m.n_moteur}</td>
-                        <td className="px-4 py-3 font-semibold text-foreground">{d.code}</td>
+                        <td className="px-4 py-3">
+                          <div className="font-semibold text-foreground">{d.code}</div>
+                          <MoteurStatuts compo={m.compo_moteur} etat={m.etat_moteur} affect={m.n_affectation} className="mt-1" />
+                        </td>
                         <td className="px-4 py-3 text-text-dim">{m.num_serie || "—"}</td>
                         <td className="px-4 py-3 text-text-dim">{m.marque || "—"}</td>
                         <td className="px-4 py-3 text-text-dim">{m.energie || "—"}</td>

@@ -15,6 +15,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PeriodFilter, inPeriod, type Period } from "@/components/period-filter";
+import { MoteurStatuts } from "@/components/moteur-statuts";
 
 type Fournisseur = {
   n_fournisseur: number;
@@ -48,6 +49,9 @@ type Moteur = {
   prix_achat: number | null;
   prix_vente: number | null;
   vendu: boolean;
+  compo_moteur: number | null;
+  etat_moteur: number | null;
+  n_affectation: number | null;
 };
 
 function fmtPrice(v: number | null | undefined) {
@@ -119,7 +123,7 @@ export default function FournisseurProfilePage({
         while (true) {
           const { data, error } = await supabase
             .from("v_moteurs_dispo")
-            .select("n_moteur, nom_type_moteur, code_moteur, num_reception, prix_achat_moteur")
+            .select("n_moteur, nom_type_moteur, code_moteur, num_reception, prix_achat_moteur, compo_moteur, etat_moteur, n_affectation")
             .in("num_reception", recIds)
             .range(offset, offset + PAGE - 1);
           if (error || !data || data.length === 0) break;
@@ -161,6 +165,9 @@ export default function FournisseurProfilePage({
         prix_achat: m.prix_achat_moteur,
         prix_vente: venteByMoteur[m.n_moteur] ?? null,
         vendu: m.n_moteur in venteByMoteur,
+        compo_moteur: m.compo_moteur ?? null,
+        etat_moteur: m.etat_moteur ?? null,
+        n_affectation: m.n_affectation ?? null,
       }));
 
       // Compte moteurs par réception
@@ -469,7 +476,10 @@ export default function FournisseurProfilePage({
                 return (
                   <tr key={m.n_moteur} className="hover:bg-surface-hover transition-colors">
                     <td className="px-4 py-3 font-mono text-xs text-text-muted">{m.n_moteur}</td>
-                    <td className="px-4 py-3 font-semibold text-foreground">{m.code}</td>
+                    <td className="px-4 py-3">
+                      <div className="font-semibold text-foreground">{m.code}</div>
+                      <MoteurStatuts compo={m.compo_moteur} etat={m.etat_moteur} affect={m.n_affectation} className="mt-1" />
+                    </td>
                     <td className="px-4 py-3 text-text-dim">
                       {m.date_achat ? new Date(m.date_achat).toLocaleDateString("fr-FR") : "—"}
                     </td>
