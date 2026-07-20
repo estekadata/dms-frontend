@@ -80,21 +80,41 @@ export default function HistoriquePage() {
       } else {
         const cutoff = new Date();
         cutoff.setMonth(cutoff.getMonth() - 12);
-        const [{ data: recData }, { data: expData }] = await Promise.all([
-          supabase.from("v_receptions").select("date_reception, nb_moteurs").gte("date_reception", cutoff.toISOString()),
-          supabase.from("tbl_expeditions_moteurs").select("date_validation").gte("date_validation", cutoff.toISOString()),
-        ]);
+        const cutoffIso = cutoff.toISOString();
         const byMonth: Record<string, { recus: number; vendus: number }> = {};
+
+        // Réceptions (peu de lignes : ~1 par arrivage) — une seule requête suffit
+        const { data: recData } = await supabase
+          .from("v_receptions")
+          .select("date_reception, nb_moteurs")
+          .gte("date_reception", cutoffIso);
         (recData || []).forEach((r: any) => {
           const k = r.date_reception?.substring(0, 7) || "";
           if (!byMonth[k]) byMonth[k] = { recus: 0, vendus: 0 };
           byMonth[k].recus += r.nb_moteurs || 0;
         });
-        (expData || []).forEach((e: any) => {
-          const k = e.date_validation?.substring(0, 7) || "";
-          if (!byMonth[k]) byMonth[k] = { recus: 0, vendus: 0 };
-          byMonth[k].vendus++;
-        });
+
+        // Ventes : 1 ligne par moteur → paginer (sinon PostgREST plafonne à 5000
+        // lignes et les mois récents tombent à 0). Tri stable obligatoire.
+        const PAGE = 5000;
+        let from = 0;
+        while (from < 500000) {
+          const { data, error } = await supabase
+            .from("tbl_expeditions_moteurs")
+            .select("date_validation")
+            .gte("date_validation", cutoffIso)
+            .order("date_validation", { ascending: true })
+            .range(from, from + PAGE - 1);
+          if (error || !data || data.length === 0) break;
+          data.forEach((e: any) => {
+            const k = e.date_validation?.substring(0, 7) || "";
+            if (!byMonth[k]) byMonth[k] = { recus: 0, vendus: 0 };
+            byMonth[k].vendus++;
+          });
+          if (data.length < PAGE) break;
+          from += PAGE;
+        }
+
         setStats(
           Object.entries(byMonth)
             .sort((a, b) => a[0].localeCompare(b[0]))
