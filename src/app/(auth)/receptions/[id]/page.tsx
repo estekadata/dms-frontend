@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SortHeader, useClientSort } from "@/components/sortable";
+import { MoteurStatuts } from "@/components/moteur-statuts";
 
 type Statut = "stock" | "resa" | "vendu";
 
@@ -19,6 +20,9 @@ type PieceRow = {
   statut: Statut;
   resaClientId: number | null;
   resaClientLabel: string | null;
+  compo?: number | null;
+  etat?: number | null;
+  affect?: number | null;
 };
 
 type Header = {
@@ -93,6 +97,7 @@ function PieceTable({
               <div className="min-w-0">
                 <p className="truncate font-semibold text-foreground">{r.label}</p>
                 <p className="truncate text-xs text-text-muted">{r.extra || "—"}</p>
+                <MoteurStatuts compo={r.compo} etat={r.etat} affect={r.affect} className="mt-1" />
               </div>
               <StatutBadge row={r} />
             </div>
@@ -120,7 +125,10 @@ function PieceTable({
             <tbody className="divide-y divide-border">
               {sorted.map((r) => (
                 <tr key={r.id} className="transition-colors hover:bg-surface-hover">
-                  <td className="px-4 py-3 font-semibold text-foreground">{r.label}</td>
+                  <td className="px-4 py-3">
+                    <div className="font-semibold text-foreground">{r.label}</div>
+                    <MoteurStatuts compo={r.compo} etat={r.etat} affect={r.affect} className="mt-1" />
+                  </td>
                   <td className="px-4 py-3 font-mono text-xs text-text-muted">{r.sub || "—"}</td>
                   <td className="px-4 py-3 text-text-dim">{r.extra || "—"}</td>
                   <td className="px-4 py-3 text-right tabular-nums text-text-dim">{fmtPrice(r.prix)}</td>
@@ -189,7 +197,7 @@ export default function ReceptionDetailPage({
       const [{ data: motRows }, { data: bvRows }] = await Promise.all([
         supabase
           .from("v_moteurs_dispo")
-          .select("n_moteur, nom_type_moteur, code_moteur, num_serie, marque, prix_achat_moteur, est_disponible, resa_client_moteur")
+          .select("n_moteur, nom_type_moteur, code_moteur, num_serie, marque, prix_achat_moteur, est_disponible, resa_client_moteur, compo_moteur, etat_moteur, n_affectation")
           .eq("num_reception", id)
           .range(0, 4999),
         supabase
@@ -234,6 +242,9 @@ export default function ReceptionDetailPage({
           statut,
           resaClientId: statut === "resa" ? cid : null,
           resaClientLabel: statut === "resa" && cid !== null ? clientMap[cid] || `Client #${cid}` : null,
+          compo: m.compo_moteur ?? null,
+          etat: m.etat_moteur ?? null,
+          affect: m.n_affectation ?? null,
         };
       });
 
