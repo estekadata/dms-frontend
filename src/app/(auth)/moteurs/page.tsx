@@ -84,16 +84,19 @@ export default function MoteursPage() {
 
     const rows = rowsRes.data || [];
 
-    // Fallback prix : moyenne de la réception si prix individuel absent
+    // Fallback prix : moyenne de la réception si prix individuel absent.
+    // Uniquement pour les réceptions TERMINÉES : sur un brouillon, le nb de
+    // moteurs est partiel → la moyenne (montant / nb) serait gonflée et fausse
+    // (ex. 13138 € / 12 moteurs saisis = 1095 € au lieu de ~110 €).
     const receptionIds = [...new Set(rows.map((m: any) => m.num_reception).filter(Boolean))] as number[];
     const avgByReception: Record<number, number> = {};
     if (receptionIds.length > 0) {
       const { data: recs } = await supabase
         .from("v_receptions")
-        .select("n_reception, montant_total, nb_moteurs")
+        .select("n_reception, montant_total, nb_moteurs, statut")
         .in("n_reception", receptionIds);
       (recs || []).forEach((r: any) => {
-        if (r.montant_total && r.nb_moteurs && r.nb_moteurs > 0) {
+        if (r.statut === "Validée" && r.montant_total && r.nb_moteurs && r.nb_moteurs > 0) {
           avgByReception[r.n_reception] = r.montant_total / r.nb_moteurs;
         }
       });
