@@ -169,7 +169,12 @@ export default function ReservationsPage() {
 
   return (
     <div>
-      <PageHeader title="Réservations" description="Gestion des réservations clients" />
+      <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
+        <PageHeader title="Réservations" description="Gestion des réservations clients" />
+        <Link href="/reservations/synthese">
+          <Button variant="outline">Voir la synthèse →</Button>
+        </Link>
+      </div>
 
       <div className="grid grid-cols-2 gap-4 mb-6">
         <Card>
