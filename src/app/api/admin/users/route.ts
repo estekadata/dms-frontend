@@ -66,12 +66,19 @@ export async function POST(req: NextRequest) {
       const validRoles = ["super_admin", "admin", "vhu"];
       const finalRole = validRoles.includes(role) ? role : "admin";
 
+      // Nettoie l'email : minuscules, espaces, et chevrons/guillemets parasites
+      // d'un copier-coller "Nom <email>" — sinon le compte devient inconnectable.
+      const cleanEmail = String(email).toLowerCase().trim().replace(/[<>"']/g, "");
+      if (!cleanEmail) {
+        return NextResponse.json({ error: "Email invalide" }, { status: 400 });
+      }
+
       const db = getSupabaseAdmin();
 
       const { data: existing } = await db
         .from("dms_users")
         .select("id")
-        .eq("email", email.toLowerCase().trim())
+        .eq("email", cleanEmail)
         .maybeSingle();
 
       if (existing) {
@@ -81,7 +88,7 @@ export async function POST(req: NextRequest) {
       const { data, error } = await db
         .from("dms_users")
         .insert({
-          email: email.toLowerCase().trim(),
+          email: cleanEmail,
           nom: nom || null,
           role: finalRole,
           password_hash,
