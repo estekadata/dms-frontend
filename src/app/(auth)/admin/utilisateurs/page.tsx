@@ -128,7 +128,7 @@ export default function UtilisateursPage() {
   }
 
   async function createUser() {
-    const email = form.email.trim().toLowerCase();
+    const email = form.email.trim().toLowerCase().replace(/[<>"']/g, "");
     const password = form.password;
     if (!email || !password) {
       alert("Email et mot de passe requis");
