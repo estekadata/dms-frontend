@@ -21,8 +21,10 @@ export async function POST(req: NextRequest) {
   // La table dms_users est verrouillée par RLS : la clé anon n'y a plus accès
   // en direct (cf. secure_dms_users.sql). La fonction ne renvoie l'utilisateur
   // que si (email, password_hash, actif) correspondent et met à jour last_login.
+  // Les comptes sont stockés en minuscules (cf. création). On normalise
+  // l'email saisi pour qu'un "Olenormand@..." matche "olenormand@...".
   const { data, error } = await supabase.rpc("dms_login", {
-    p_email: email.trim(),
+    p_email: email.trim().toLowerCase(),
     p_password_hash: pwdHash,
   });
 

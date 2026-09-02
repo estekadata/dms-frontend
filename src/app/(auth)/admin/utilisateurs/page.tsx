@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { Copy, Check, X, RefreshCw, AlertTriangle } from "lucide-react";
+import { Copy, Check, X, RefreshCw, AlertTriangle, KeyRound } from "lucide-react";
 import { hashPassword } from "@/lib/hash";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -103,6 +103,28 @@ export default function UtilisateursPage() {
       return;
     }
     load();
+  }
+
+  async function resetPassword(user: User) {
+    if (
+      !confirm(
+        `Réinitialiser le mot de passe de ${user.email} ?\n\nUn nouveau mot de passe sera généré et affiché une seule fois. L'ancien ne fonctionnera plus.`
+      )
+    )
+      return;
+    const newPwd = generatePassword();
+    const password_hash = await hashPassword(newPwd);
+    const res = await fetch("/api/admin/users", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "change_password", user_id: user.id, password_hash }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      alert(`Erreur : ${j.error || res.status}`);
+      return;
+    }
+    setCreatedCreds({ email: user.email, password: newPwd, nom: user.nom || "" });
   }
 
   async function createUser() {
@@ -328,6 +350,14 @@ export default function UtilisateursPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => resetPassword(u)}
+                        title="Générer un nouveau mot de passe"
+                      >
+                        <KeyRound size={14} className="mr-1" /> Réinit. MDP
+                      </Button>
                       <Button size="sm" variant="outline" onClick={() => toggleActif(u)}>
                         {u.actif ? "Désactiver" : "Activer"}
                       </Button>
