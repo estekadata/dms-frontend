@@ -112,6 +112,22 @@ export default function ReceptionsPage() {
     await reloadDrafts();
   }
 
+  // Rouvrir un dossier clos (repasse la réception en brouillon modifiable)
+  async function rouvrirReception(n_reception: number) {
+    if (!confirm(`Rouvrir le dossier de la réception n°${n_reception} ? Elle redeviendra modifiable comme brouillon.`)) return;
+    setValidatingId(n_reception);
+    const { error } = await supabase
+      .from("tbl_receptions")
+      .update({ reception_terminee: false })
+      .eq("n_reception", n_reception);
+    setValidatingId(null);
+    if (error) {
+      alert(`Erreur : ${error.message}`);
+      return;
+    }
+    await reloadDrafts();
+  }
+
   async function openDetail(rec: Reception) {
     setSelected(rec);
     setDetailLoading(true);
@@ -216,7 +232,12 @@ export default function ReceptionsPage() {
                           </Button>
                         </div>
                       ) : (
-                        <Badge className="bg-[rgba(52,211,153,0.10)] text-emerald-600 border border-[rgba(52,211,153,0.20)]">{r.statut || "Reçu"}</Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-[rgba(52,211,153,0.10)] text-emerald-600 border border-[rgba(52,211,153,0.20)]">{r.statut || "Reçu"}</Badge>
+                          <Button size="xs" variant="ghost" onClick={(e) => { e.stopPropagation(); rouvrirReception(r.n_reception); }} disabled={validatingId === r.n_reception} className="text-text-dim hover:text-foreground">
+                            {validatingId === r.n_reception ? "…" : "Rouvrir"}
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -276,7 +297,12 @@ export default function ReceptionsPage() {
                                   </Button>
                                 </div>
                               ) : (
-                                <Badge className="bg-[rgba(52,211,153,0.10)] text-emerald-600 border border-[rgba(52,211,153,0.20)] hover:bg-[rgba(52,211,153,0.15)]">{r.statut || "Reçu"}</Badge>
+                                <div className="flex items-center justify-center gap-2">
+                                  <Badge className="bg-[rgba(52,211,153,0.10)] text-emerald-600 border border-[rgba(52,211,153,0.20)] hover:bg-[rgba(52,211,153,0.15)]">{r.statut || "Reçu"}</Badge>
+                                  <Button size="xs" variant="ghost" onClick={(e) => { e.stopPropagation(); rouvrirReception(r.n_reception); }} disabled={validatingId === r.n_reception} className="text-text-dim hover:text-foreground">
+                                    {validatingId === r.n_reception ? "..." : "Rouvrir"}
+                                  </Button>
+                                </div>
                               )}
                             </td>
                           </tr>
