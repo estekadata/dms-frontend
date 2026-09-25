@@ -37,7 +37,7 @@ export default function MoteursPage() {
   const [counts, setCounts] = useState({ total: 0, dispo: 0, reserve: 0, archive: 0 });
   const [loading, setLoading] = useState(false);
   const [clientNamesById, setClientNamesById] = useState<Record<number, string>>({});
-  const [reserveTarget, setReserveTarget] = useState<{ id: number; code: string } | null>(null);
+  const [reserveTarget, setReserveTarget] = useState<{ id: number; code: string; mode: "reserve" | "modifier" } | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
 
   // Debounce de la recherche : évite de lancer 5 requêtes à chaque frappe.
@@ -160,6 +160,22 @@ export default function MoteursPage() {
     await loadMoteurs();
   }
 
+  // Change le client d'une réservation existante (conserve la date de réservation)
+  async function changerClientMoteur(n_moteur: number, n_client: number) {
+    setBusyId(n_moteur);
+    const { error } = await supabase
+      .from("tbl_moteurs")
+      .update({ resa_client_moteur: String(n_client) })
+      .eq("n_moteur", n_moteur);
+    setBusyId(null);
+    if (error) {
+      alert(`Erreur lors du changement de client : ${error.message}`);
+      return;
+    }
+    setReserveTarget(null);
+    await loadMoteurs();
+  }
+
   async function libererMoteur(n_moteur: number, code: string) {
     if (!confirm(`Libérer la réservation du moteur ${code} (n°${n_moteur}) ?`)) return;
     setBusyId(n_moteur);
@@ -209,7 +225,7 @@ export default function MoteursPage() {
   function action(m: any, d: ReturnType<typeof derive>): ReactNode {
     if (d.isAvailable)
       return (
-        <Button size="sm" variant="outline" onClick={() => setReserveTarget({ id: m.n_moteur, code: d.code })} disabled={busyId === m.n_moteur}>
+        <Button size="sm" variant="outline" onClick={() => setReserveTarget({ id: m.n_moteur, code: d.code, mode: "reserve" })} disabled={busyId === m.n_moteur}>
           Réserver
         </Button>
       );
@@ -223,6 +239,9 @@ export default function MoteursPage() {
           ) : (
             <span className="text-sm text-text-dim">—</span>
           )}
+          <Button size="xs" variant="ghost" onClick={() => setReserveTarget({ id: m.n_moteur, code: d.code, mode: "modifier" })} disabled={busyId === m.n_moteur} className="text-text-dim hover:text-brand">
+            Modifier
+          </Button>
           <Button size="xs" variant="ghost" onClick={() => libererMoteur(m.n_moteur, d.code)} disabled={busyId === m.n_moteur} className="text-text-dim hover:text-destructive">
             Libérer
           </Button>
@@ -372,8 +391,14 @@ export default function MoteursPage() {
       <ReserveClientDialog
         open={reserveTarget !== null}
         onClose={() => setReserveTarget(null)}
-        onConfirm={(clientId) => (reserveTarget ? reserveMoteur(reserveTarget.id, clientId) : undefined)}
-        title="Réserver ce moteur"
+        onConfirm={(clientId) =>
+          reserveTarget
+            ? reserveTarget.mode === "modifier"
+              ? changerClientMoteur(reserveTarget.id, clientId)
+              : reserveMoteur(reserveTarget.id, clientId)
+            : undefined
+        }
+        title={reserveTarget?.mode === "modifier" ? "Modifier le client de la réservation" : "Réserver ce moteur"}
         pieceLabel={reserveTarget ? `${reserveTarget.code} — moteur n°${reserveTarget.id}` : ""}
       />
     </div>
