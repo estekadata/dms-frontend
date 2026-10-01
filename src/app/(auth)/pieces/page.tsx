@@ -23,6 +23,14 @@ type Piece = {
 type SortKey = "categorie" | "reference" | "modele" | "marque" | "stock";
 type SortDir = "asc" | "desc";
 
+type Mouvement = {
+  id: number;
+  date_mouvement: string | null;
+  quantite: number | null;
+  client: string | null;
+  reference: string | null;
+};
+
 export default function PiecesPage() {
   const [rawSearch, setRawSearch] = useState("");
   const [search, setSearch] = useState("");
@@ -35,6 +43,9 @@ export default function PiecesPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("reference");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [selected, setSelected] = useState<Piece | null>(null);
+  const [mouvements, setMouvements] = useState<Mouvement[]>([]);
+  const [mvLoading, setMvLoading] = useState(false);
   const reqRef = useRef(0);
 
   // Debounce search
@@ -147,6 +158,20 @@ export default function PiecesPage() {
     setLoadingMore(false);
   }
 
+  // Ouvre l'historique achats/ventes d'une référence (tbl_pieces_mouvements)
+  async function openHistorique(p: Piece) {
+    setSelected(p);
+    setMvLoading(true);
+    const { data } = await supabase
+      .from("tbl_pieces_mouvements")
+      .select("id, date_mouvement, quantite, client, reference")
+      .eq("reference", p.reference)
+      .order("date_mouvement", { ascending: false, nullsFirst: false })
+      .limit(500);
+    setMouvements((data as Mouvement[]) || []);
+    setMvLoading(false);
+  }
+
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
       setSortDir(sortDir === "asc" ? "desc" : "asc");
@@ -170,7 +195,7 @@ export default function PiecesPage() {
 
   return (
     <div>
-      <PageHeader title="Pièces détachées" description="Gestion du stock pièces (alternateurs, démarreurs...)" />
+      <PageHeader title="Pièces détachées" description="Stock pièces (alternateurs, démarreurs, compresseurs...) — cliquez une référence pour son historique achats/ventes" />
 
       <div className="grid grid-cols-3 gap-4 mb-6">
         <Card>
@@ -224,7 +249,8 @@ export default function PiecesPage() {
       {loading ? (
         <div className="text-center py-12 text-text-muted">Chargement...</div>
       ) : (
-        <>
+        <div className={`grid grid-cols-1 gap-6 ${selected ? "lg:grid-cols-2" : ""}`}>
+          <div>
           <div className="bg-surface border border-border rounded-[14px] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -274,8 +300,13 @@ export default function PiecesPage() {
                     return (
                       <tr
                         key={p.id}
-                        className={`hover:bg-surface-hover transition-colors ${
-                          isAlerte ? "bg-[rgba(251,191,36,0.05)]" : ""
+                        onClick={() => openHistorique(p)}
+                        className={`cursor-pointer hover:bg-surface-hover transition-colors ${
+                          selected?.id === p.id
+                            ? "bg-brand-soft"
+                            : isAlerte
+                            ? "bg-[rgba(251,191,36,0.05)]"
+                            : ""
                         }`}
                       >
                         <td className="px-4 py-3 text-text-dim text-xs">{p.categorie || "—"}</td>
@@ -314,7 +345,104 @@ export default function PiecesPage() {
               </Button>
             </div>
           )}
-        </>
+          </div>
+          {selected && (
+            <PanelHistorique
+              piece={selected}
+              mouvements={mouvements}
+              loading={mvLoading}
+              onClose={() => setSelected(null)}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PanelHistorique({
+  piece,
+  mouvements,
+  loading,
+  onClose,
+}: {
+  piece: Piece;
+  mouvements: Mouvement[];
+  loading: boolean;
+  onClose: () => void;
+}) {
+  const totalEntrees = mouvements
+    .filter((m) => (m.quantite ?? 0) >= 0)
+    .reduce((s, m) => s + (m.quantite || 0), 0);
+  const totalVendus = mouvements
+    .filter((m) => (m.quantite ?? 0) < 0)
+    .reduce((s, m) => s + Math.abs(m.quantite || 0), 0);
+
+  return (
+    <div className="h-fit rounded-[14px] border border-border bg-surface p-5">
+      <div className="mb-4 flex items-start justify-between">
+        <div>
+          <h3 className="font-mono font-bold text-foreground">{piece.reference}</h3>
+          <p className="text-sm text-text-dim">
+            {piece.categorie || "—"} · stock actuel {piece.stock ?? 0}
+          </p>
+        </div>
+        <button onClick={onClose} className="text-lg text-text-muted transition-colors hover:text-foreground">
+          ✕
+        </button>
+      </div>
+
+      <div className="mb-4 grid grid-cols-2 gap-3">
+        <div className="rounded-lg bg-surface-alt p-3">
+          <p className="text-xs font-semibold uppercase text-text-dim">Entrées (achats)</p>
+          <p className="text-xl font-bold text-emerald-600">{totalEntrees}</p>
+        </div>
+        <div className="rounded-lg bg-surface-alt p-3">
+          <p className="text-xs font-semibold uppercase text-text-dim">Vendus</p>
+          <p className="text-xl font-bold text-brand">{totalVendus}</p>
+        </div>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-text-muted">Chargement de l'historique…</p>
+      ) : mouvements.length === 0 ? (
+        <p className="text-sm italic text-text-muted">Aucun mouvement pour cette référence.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-surface-alt text-xs uppercase text-text-dim">
+              <tr>
+                <th className="px-3 py-2 text-left">Date</th>
+                <th className="px-3 py-2 text-left">Type</th>
+                <th className="px-3 py-2 text-center">Qté</th>
+                <th className="px-3 py-2 text-left">Client</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {mouvements.map((m) => {
+                const vente = (m.quantite ?? 0) < 0;
+                return (
+                  <tr key={m.id} className="transition-colors hover:bg-surface-hover">
+                    <td className="px-3 py-2 text-text-dim">
+                      {m.date_mouvement ? new Date(m.date_mouvement).toLocaleDateString("fr-FR") : "—"}
+                    </td>
+                    <td className="px-3 py-2">
+                      {vente ? (
+                        <Badge className="border border-[rgba(196,30,58,0.20)] bg-brand-soft text-brand">Vente</Badge>
+                      ) : (
+                        <Badge className="border border-[rgba(52,211,153,0.20)] bg-[rgba(52,211,153,0.10)] text-emerald-600">
+                          Entrée
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-center font-medium tabular-nums">{Math.abs(m.quantite ?? 0)}</td>
+                    <td className="px-3 py-2 text-text-dim">{(m.client || "").trim() || "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
