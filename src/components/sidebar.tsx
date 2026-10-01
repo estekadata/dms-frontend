@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, TrendingUp, Target, BarChart3, Euro,
   PackageOpen, Search, Cog, ClipboardList, History,
-  Wrench, Building2, Users, LogOut, Inbox, RefreshCw, X, Layers,
+  Wrench, Building2, Users, LogOut, Inbox, RefreshCw, X, Layers, ShoppingCart,
 } from "lucide-react";
 
 const navSections = [
@@ -15,6 +15,7 @@ const navSections = [
     items: [
       { label: "Ventes", href: "/ventes", icon: TrendingUp },
       { label: "Besoins", href: "/besoins", icon: Target },
+      { label: "Aide à la commande", href: "/recherches", icon: ShoppingCart },
       { label: "Analyse", href: "/analyse", icon: BarChart3 },
       { label: "Mise à jour prix", href: "/prix", icon: Euro },
     ],
