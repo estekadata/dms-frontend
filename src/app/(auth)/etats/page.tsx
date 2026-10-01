@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Printer } from "lucide-react";
+import Link from "next/link";
+import { Printer, SlidersHorizontal } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -105,9 +106,16 @@ export default function EtatsPage() {
     <div>
       <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
         <PageHeader title="États & rapports" description="Inventaire, valorisation du stock et statistiques" />
-        <Button variant="outline" onClick={() => window.print()} className="print:hidden">
-          <Printer size={14} className="mr-1" /> Imprimer
-        </Button>
+        <div className="flex gap-2 print:hidden">
+          <Link href="/etats/constructeur">
+            <Button variant="outline">
+              <SlidersHorizontal size={14} className="mr-1" /> Constructeur d&apos;états
+            </Button>
+          </Link>
+          <Button variant="outline" onClick={() => window.print()}>
+            <Printer size={14} className="mr-1" /> Imprimer
+          </Button>
+        </div>
       </div>
 
       <div className="mb-6 flex items-center gap-2 text-sm text-text-dim">
