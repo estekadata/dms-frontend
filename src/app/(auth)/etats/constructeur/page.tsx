@@ -300,6 +300,7 @@ const VENTES: SourceDef = {
     { key: "date_chargement", label: "Date", kind: "date" },
     { key: "clientNom", label: "Client", virtual: true },
     { key: "montant_ht", label: "Montant HT", kind: "price" },
+    { key: "employe", label: "Employé" },
     { key: "num_facture", label: "N° facture" },
     { key: "statut", label: "Statut", kind: "statut", virtual: true },
     { key: "ref_container", label: "Conteneur" },
@@ -311,6 +312,7 @@ const VENTES: SourceDef = {
   defaultCols: ["n_expedition", "date_chargement", "clientNom", "montant_ht", "statut"],
   groupFields: [
     { key: "client", label: "Client", get: (r) => r.clientNom || "—" },
+    { key: "employe", label: "Employé (vendeur)", get: (r) => r.employe || "— (non renseigné)" },
     { key: "statut", label: "Statut", get: (r) => venteStatut(r) },
     { key: "mois", label: "Mois", get: (r) => (r.date_chargement ? String(r.date_chargement).slice(0, 7) : "—") },
   ],
@@ -319,7 +321,7 @@ const VENTES: SourceDef = {
   sortDefault: "date_chargement",
   sortDirDefault: "desc",
   selectExtra: ["n_client", "expedition_terminee"],
-  aggFields: ["n_client", "expedition_terminee", "date_chargement", "montant_ht"],
+  aggFields: ["n_client", "expedition_terminee", "date_chargement", "montant_ht", "employe"],
   filterControls: [
     { kind: "search", key: "terme", placeholder: "Recherche (facture, infos)" },
     {
