@@ -133,6 +133,9 @@ export default function EtatsPage() {
         <Link href="/etats/constructeur" className="rounded-full bg-surface-alt px-3 py-1.5 text-xs font-medium text-text-dim transition hover:bg-surface-hover">
           Constructeur d&apos;états
         </Link>
+        <Link href="/etiquettes" className="rounded-full bg-surface-alt px-3 py-1.5 text-xs font-medium text-text-dim transition hover:bg-surface-hover">
+          Étiquettes
+        </Link>
       </div>
 
       <div className="mb-6 flex items-center gap-2 text-sm text-text-dim">
