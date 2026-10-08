@@ -57,7 +57,8 @@ export default function WorkspacePage() {
       <PageHeader title="Espace de travail" description="Ouvre plusieurs pages en parallèle — chaque onglet garde son état." />
 
       {/* Barre d'onglets */}
-      <div className="mb-3 flex items-center gap-2">
+      <div className="relative z-40 mb-3 flex items-center gap-2">
+        {/* Onglets (zone à défilement horizontal) */}
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
           {tabs.map((t) => (
             <div
@@ -79,32 +80,32 @@ export default function WorkspacePage() {
               </button>
             </div>
           ))}
+        </div>
 
-          {/* Ajouter un onglet */}
-          <div className="relative shrink-0">
-            <button
-              onClick={() => setMenuOpen((o) => !o)}
-              className="flex items-center gap-1 rounded-lg px-2 py-2 text-sm text-text-dim transition hover:bg-surface-hover hover:text-foreground"
-            >
-              <Plus size={16} /> Ouvrir une page
-            </button>
-            {menuOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                <div className="absolute left-0 top-full z-20 mt-1 max-h-[60vh] w-64 overflow-y-auto rounded-lg border border-border bg-surface py-1 shadow-xl">
-                  {PAGES.map((p) => (
-                    <button
-                      key={p.route}
-                      onClick={() => openPage(p)}
-                      className="block w-full px-3 py-2 text-left text-sm text-text-dim transition hover:bg-surface-hover hover:text-foreground"
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+        {/* Ajouter un onglet (hors de la zone à défilement pour que le menu ne soit pas coupé) */}
+        <div className="relative shrink-0">
+          <button
+            onClick={() => setMenuOpen((o) => !o)}
+            className="flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm font-medium text-brand transition hover:bg-brand-soft"
+          >
+            <Plus size={16} /> Ouvrir une page
+          </button>
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
+              <div className="absolute right-0 top-full z-50 mt-1 max-h-[60vh] w-64 overflow-y-auto rounded-lg border border-border bg-surface py-1 shadow-xl">
+                {PAGES.map((p) => (
+                  <button
+                    key={p.route}
+                    onClick={() => openPage(p)}
+                    className="block w-full px-3 py-2 text-left text-sm text-text-dim transition hover:bg-surface-hover hover:text-foreground"
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         {tabs.length > 0 && (
@@ -119,7 +120,7 @@ export default function WorkspacePage() {
       </div>
 
       {/* Cadres (un par onglet, seul l'actif est visible — l'état est conservé) */}
-      <div className="relative flex-1 overflow-hidden rounded-[14px] border border-border bg-surface">
+      <div className="relative z-0 flex-1 overflow-hidden rounded-[14px] border border-border bg-surface">
         {tabs.length === 0 ? (
           <div className="flex h-full items-center justify-center text-sm italic text-text-muted">
             Clique « Ouvrir une page » pour démarrer.
