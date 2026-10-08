@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Printer, Download } from "lucide-react";
+import { ArrowLeft, Printer, Download, FileSpreadsheet } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { exportXlsx } from "@/lib/export";
 
 type MoisRow = {
   mois: string;
@@ -88,6 +89,13 @@ export default function AchatsMensuelsPage() {
     URL.revokeObjectURL(url);
   }
 
+  function exportExcel() {
+    if (!rows) return;
+    const aoa: (string | number)[][] = [["Mois", "Réceptions", "Montant HT", "Facturées", "Non facturées", "Montant facturé"]];
+    rows.forEach((r) => aoa.push([moisLabel(r.mois), r.nb, Math.round(r.montant), r.nbFact, r.nb - r.nbFact, Math.round(r.montantFact)]));
+    exportXlsx(`achats-mensuels-${new Date().toISOString().slice(0, 10)}`, [{ name: "Achats mensuels", aoa }]);
+  }
+
   const tot = rows
     ? rows.reduce((a, r) => ({ nb: a.nb + r.nb, montant: a.montant + r.montant, nbFact: a.nbFact + r.nbFact, montantFact: a.montantFact + r.montantFact }), { nb: 0, montant: 0, nbFact: 0, montantFact: 0 })
     : { nb: 0, montant: 0, nbFact: 0, montantFact: 0 };
@@ -100,6 +108,9 @@ export default function AchatsMensuelsPage() {
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <PageHeader title="Achats mensuels" description="Réceptions fournisseurs par mois, montant HT et statut de facturation." />
         <div className="flex gap-2 print:hidden">
+          <Button variant="outline" onClick={exportExcel} disabled={!rows || rows.length === 0}>
+            <FileSpreadsheet size={14} className="mr-1" /> Export Excel
+          </Button>
           <Button variant="outline" onClick={exportCsv} disabled={!rows || rows.length === 0}>
             <Download size={14} className="mr-1" /> Export CSV
           </Button>

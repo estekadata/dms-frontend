@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Printer, Download } from "lucide-react";
+import { ArrowLeft, Printer, Download, FileSpreadsheet } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { exportXlsx } from "@/lib/export";
 
 const PERIODS = [
   { label: "3 mois", v: 3 },
@@ -106,6 +107,17 @@ export default function TopVentesPage() {
     URL.revokeObjectURL(url);
   }
 
+  function exportExcel() {
+    const motAoa: (string | number)[][] = [["Rang", "Type moteur", "Marque", "Vendus"]];
+    (topMot || []).forEach((r, i) => motAoa.push([i + 1, r.label, r.sub, r.nb]));
+    const bvAoa: (string | number)[][] = [["Rang", "Type BV", "Vendues", "CA"]];
+    (topBv || []).forEach((r, i) => bvAoa.push([i + 1, r.label, r.nb, Math.round(r.ca || 0)]));
+    exportXlsx(`top-ventes-${months}mois-${new Date().toISOString().slice(0, 10)}`, [
+      { name: "Top moteurs", aoa: motAoa },
+      { name: "Top boîtes", aoa: bvAoa },
+    ]);
+  }
+
   const TopTable = ({ title, rows, colLabel, withCa }: { title: string; rows: TopRow[] | null; colLabel: string; withCa?: boolean }) => (
     <div>
       <h3 className="mb-3 font-semibold text-foreground">{title}</h3>
@@ -151,6 +163,9 @@ export default function TopVentesPage() {
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <PageHeader title="Top 15 des ventes" description="Moteurs et boîtes les plus vendus sur la période." />
         <div className="flex gap-2 print:hidden">
+          <Button variant="outline" onClick={exportExcel} disabled={loading}>
+            <FileSpreadsheet size={14} className="mr-1" /> Export Excel
+          </Button>
           <Button variant="outline" onClick={exportCsv} disabled={loading}>
             <Download size={14} className="mr-1" /> Export CSV
           </Button>

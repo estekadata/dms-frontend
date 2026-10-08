@@ -1,7 +1,8 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Printer, Download, Save, Play, Trash2 } from "lucide-react";
+import { ArrowLeft, Printer, Download, Save, Play, Trash2, FileSpreadsheet } from "lucide-react";
+import { exportXlsx } from "@/lib/export";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -266,6 +267,21 @@ export default function ConstructeurEtatPage() {
     }
   }
 
+  function exportExcel() {
+    const stamp = new Date().toISOString().slice(0, 10);
+    if (mode === "regroupe" && groups && groups.length) {
+      const gf = GROUP_BY_KEY[groupBy];
+      const aoa: (string | number)[][] = [[gf.label, "Nombre", "Valorisation (€)", "Prix moyen (€)"]];
+      groups.forEach((g) => aoa.push([g.val, g.count, Math.round(g.sum), Math.round(g.avg)]));
+      exportXlsx(`etat-regroupe-${groupBy}-${stamp}`, [{ name: "Synthèse", aoa }]);
+    } else if (rows && rows.length) {
+      const cols = selectedCols.map((k) => COL_BY_KEY[k]).filter(Boolean);
+      const aoa: (string | number)[][] = [cols.map((c) => c.label)];
+      rows.forEach((r) => aoa.push(cols.map((c) => cellValue(r, c))));
+      exportXlsx(`etat-moteurs-${stamp}`, [{ name: "Moteurs", aoa }]);
+    }
+  }
+
   async function sauvegarder() {
     const nom = prompt("Nom de l'état à sauvegarder :");
     if (!nom || !nom.trim()) return;
@@ -419,6 +435,9 @@ export default function ConstructeurEtatPage() {
             </Button>
             <Button variant="outline" onClick={sauvegarder}>
               <Save size={14} className="mr-1" /> Sauvegarder
+            </Button>
+            <Button variant="outline" onClick={exportExcel} disabled={!hasResult || empty}>
+              <FileSpreadsheet size={14} className="mr-1" /> Export Excel
             </Button>
             <Button variant="outline" onClick={exportCsv} disabled={!hasResult || empty}>
               <Download size={14} className="mr-1" /> Export CSV
