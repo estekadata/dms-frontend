@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -201,7 +202,7 @@ export default function HistoriquePage() {
                 <div key={`exp-c-${i}`} className="rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
                   <div className="flex items-start justify-between gap-2">
                     <p className="truncate font-semibold text-foreground">{e.code_moteur || "—"}</p>
-                    <span className="shrink-0 font-mono text-xs text-text-muted">n°{e.n_expedition}</span>
+                    <Link href={`/expeditions/${e.n_expedition}`} className="shrink-0 font-mono text-xs font-semibold text-brand hover:underline">#{e.n_expedition}</Link>
                   </div>
                   <div className="mt-2 flex items-center justify-between gap-2 border-t border-border pt-2 text-sm">
                     <span className="min-w-0 truncate text-text-dim">
@@ -227,7 +228,7 @@ export default function HistoriquePage() {
                   <tbody className="divide-y divide-border">
                     {expSort.sorted.map((e, i) => (
                       <tr key={`exp-r-${i}`} className="transition-colors hover:bg-surface-hover">
-                        <td className="px-4 py-3 font-mono text-xs text-text-muted">{e.n_expedition}</td>
+                        <td className="px-4 py-3"><Link href={`/expeditions/${e.n_expedition}`} className="font-mono text-xs font-semibold text-brand hover:underline">#{e.n_expedition}</Link></td>
                         <td className="px-4 py-3 text-text-dim">{e.date_validation ? new Date(e.date_validation).toLocaleDateString("fr-FR") : "—"}</td>
                         <td className="px-4 py-3 font-medium text-foreground">{e.client || "—"}</td>
                         <td className="px-4 py-3 text-text-dim">{e.code_moteur || "—"}</td>
