@@ -118,6 +118,17 @@ export default function EtatsPage() {
         </div>
       </div>
 
+      {/* Navigation entre états */}
+      <div className="mb-5 flex flex-wrap gap-2 print:hidden">
+        <span className="rounded-full bg-brand px-3 py-1.5 text-xs font-medium text-white">Inventaire</span>
+        <Link href="/etats/achats-mensuels" className="rounded-full bg-surface-alt px-3 py-1.5 text-xs font-medium text-text-dim transition hover:bg-surface-hover">
+          Achats mensuels
+        </Link>
+        <Link href="/etats/constructeur" className="rounded-full bg-surface-alt px-3 py-1.5 text-xs font-medium text-text-dim transition hover:bg-surface-hover">
+          Constructeur d&apos;états
+        </Link>
+      </div>
+
       <div className="mb-6 flex items-center gap-2 text-sm text-text-dim">
         <span className="font-semibold text-foreground">Inventaire du stock</span>
         <span>· arrêté au {asOf.toLocaleDateString("fr-FR")}</span>
