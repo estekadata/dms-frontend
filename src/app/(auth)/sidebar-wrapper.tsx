@@ -15,7 +15,7 @@ export function SidebarWrapper({ userName, userRole }: Props) {
   return (
     <>
       {/* Barre supérieure mobile (burger) */}
-      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-surface px-4 md:hidden">
+      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-surface px-4 md:hidden print:hidden">
         <button
           onClick={() => setOpen(true)}
           aria-label="Ouvrir le menu"
