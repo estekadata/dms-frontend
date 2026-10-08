@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Printer, Download } from "lucide-react";
+import { ArrowLeft, Printer, Download, FileSpreadsheet } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { exportXlsx } from "@/lib/export";
 
 type Raw = { date_reception: string | null; nb_moteurs: number | null };
 type JourRow = { jour: string; nb: number; moteurs: number };
@@ -84,6 +85,13 @@ export default function ReceptionsJourPage() {
     URL.revokeObjectURL(url);
   }
 
+  function exportExcel() {
+    if (!rows) return;
+    const aoa: (string | number)[][] = [["Jour", "Réceptions", "Moteurs reçus"]];
+    rows.forEach((r) => aoa.push([jourLabel(r.jour), r.nb, r.moteurs]));
+    exportXlsx(`receptions-par-jour-${new Date().toISOString().slice(0, 10)}`, [{ name: "Réceptions par jour", aoa }]);
+  }
+
   return (
     <div>
       <Link href="/etats" className="mb-4 inline-flex items-center gap-2 text-sm text-text-dim hover:text-foreground print:hidden">
@@ -92,6 +100,9 @@ export default function ReceptionsJourPage() {
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <PageHeader title="Réceptions par jour" description="Nombre de réceptions et de moteurs reçus, jour par jour." />
         <div className="flex gap-2 print:hidden">
+          <Button variant="outline" onClick={exportExcel} disabled={!rows || rows.length === 0}>
+            <FileSpreadsheet size={14} className="mr-1" /> Export Excel
+          </Button>
           <Button variant="outline" onClick={exportCsv} disabled={!rows || rows.length === 0}>
             <Download size={14} className="mr-1" /> Export CSV
           </Button>
