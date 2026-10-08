@@ -124,6 +124,9 @@ export default function EtatsPage() {
         <Link href="/etats/achats-mensuels" className="rounded-full bg-surface-alt px-3 py-1.5 text-xs font-medium text-text-dim transition hover:bg-surface-hover">
           Achats mensuels
         </Link>
+        <Link href="/etats/top-ventes" className="rounded-full bg-surface-alt px-3 py-1.5 text-xs font-medium text-text-dim transition hover:bg-surface-hover">
+          Top 15 ventes
+        </Link>
         <Link href="/etats/constructeur" className="rounded-full bg-surface-alt px-3 py-1.5 text-xs font-medium text-text-dim transition hover:bg-surface-hover">
           Constructeur d&apos;états
         </Link>
