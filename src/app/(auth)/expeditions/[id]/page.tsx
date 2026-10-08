@@ -1,7 +1,7 @@
 "use client";
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Printer, Cog, Package } from "lucide-react";
+import { ArrowLeft, Printer, Cog, Package, UserRound } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,13 @@ export default function ExpeditionDetailPage({ params }: { params: Promise<{ id:
   const [boites, setBoites] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  // Employé / vendeur (colonne Supabase tbl_expeditions.employe)
+  const [employe, setEmploye] = useState("");
+  const [empOptions, setEmpOptions] = useState<string[]>([]);
+  const [savingEmp, setSavingEmp] = useState(false);
+  const [empSaved, setEmpSaved] = useState(false);
+  const [empError, setEmpError] = useState(false);
 
   useEffect(() => {
     if (!Number.isFinite(id)) {
@@ -133,11 +140,50 @@ export default function ExpeditionDetailPage({ params }: { params: Promise<{ id:
         }))
       );
       setLoading(false);
+
+      // Employé : lecture tolérante (la colonne peut ne pas encore exister)
+      const { data: empRow, error: empErr } = await supabase
+        .from("tbl_expeditions")
+        .select("employe")
+        .eq("n_expedition", id)
+        .maybeSingle();
+      if (!cancelled) {
+        if (empErr) setEmpError(true);
+        else setEmploye((empRow as any)?.employe || "");
+      }
+
+      // Liste des employés proposés : prénoms déjà utilisés sur les moteurs
+      const { data: us } = await supabase
+        .from("tbl_moteurs")
+        .select("utilisateur")
+        .not("utilisateur", "is", null)
+        .order("n_moteur", { ascending: false })
+        .limit(3000);
+      if (!cancelled) {
+        const opts = [...new Set((us || []).map((u: any) => u.utilisateur).filter(Boolean))].sort((a, b) =>
+          String(a).localeCompare(String(b))
+        );
+        setEmpOptions(opts as string[]);
+      }
     })();
     return () => {
       cancelled = true;
     };
   }, [id]);
+
+  async function saveEmploye() {
+    setSavingEmp(true);
+    const val = employe.trim() || null;
+    const { error } = await supabase.from("tbl_expeditions").update({ employe: val }).eq("n_expedition", id);
+    setSavingEmp(false);
+    if (error) {
+      setEmpError(true);
+      return;
+    }
+    setEmpError(false);
+    setEmpSaved(true);
+    setTimeout(() => setEmpSaved(false), 2000);
+  }
 
   if (loading) return <div className="py-16 text-center text-text-muted">Chargement de l&apos;expédition…</div>;
 
@@ -205,6 +251,7 @@ export default function ExpeditionDetailPage({ params }: { params: Promise<{ id:
           <p className="text-right"><span className="font-semibold">Facture :</span> {header.num_facture || "—"}</p>
           <p><span className="font-semibold">Transitaire :</span> {header.transitaire || "—"} · <span className="font-semibold">Container :</span> {header.ref_container || "—"}</p>
           <p className="text-right"><span className="font-semibold">Montant HT :</span> {fmtPrice(header.montant_ht)}</p>
+          <p className="col-span-2"><span className="font-semibold">Employé (vendeur) :</span> {employe || "—"}</p>
         </div>
       </div>
 
@@ -243,6 +290,30 @@ export default function ExpeditionDetailPage({ params }: { params: Promise<{ id:
         {header.transitaire ? <> · Transitaire {header.transitaire}</> : null}
         {header.ref_container ? <> · Container {header.ref_container}</> : null}
         {header.num_facture ? <> · Facture {header.num_facture}</> : null}
+      </div>
+
+      {/* Employé / vendeur */}
+      <div className="mb-6 flex flex-wrap items-center gap-2 print:hidden">
+        <span className="inline-flex items-center gap-1.5 text-sm text-text-dim">
+          <UserRound size={14} /> Employé (vendeur) :
+        </span>
+        <input
+          list="emp-list"
+          value={employe}
+          onChange={(e) => setEmploye(e.target.value)}
+          placeholder="Prénom"
+          className="rounded-lg border border-border bg-surface-alt px-3 py-2 text-sm text-foreground"
+        />
+        <datalist id="emp-list">
+          {empOptions.map((o) => (
+            <option key={o} value={o} />
+          ))}
+        </datalist>
+        <Button variant="outline" onClick={saveEmploye} disabled={savingEmp}>
+          {savingEmp ? "Enregistrement…" : "Enregistrer"}
+        </Button>
+        {empSaved && <span className="text-xs text-emerald-600">Enregistré ✓</span>}
+        {empError && <span className="text-xs text-amber-600">Colonne « employe » manquante (migration SQL à exécuter).</span>}
       </div>
 
       {/* KPIs */}
