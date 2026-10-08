@@ -62,7 +62,7 @@ export function Sidebar({ userName, userRole, open = false, onClose = () => {} }
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-50 flex h-screen w-64 flex-col border-r border-border bg-surface transition-transform duration-200 md:z-40 md:translate-x-0",
+        "fixed left-0 top-0 z-50 flex h-screen w-64 flex-col border-r border-border bg-surface transition-transform duration-200 md:z-40 md:translate-x-0 print:hidden",
         open ? "translate-x-0" : "-translate-x-full"
       )}
     >

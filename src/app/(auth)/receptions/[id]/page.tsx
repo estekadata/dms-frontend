@@ -1,9 +1,10 @@
 "use client";
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Package, Cog } from "lucide-react";
+import { ArrowLeft, Package, Cog, Printer } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SortHeader, useClientSort } from "@/components/sortable";
@@ -308,30 +309,55 @@ export default function ReceptionDetailPage({
 
   return (
     <div>
-      <Link href="/receptions" className="mb-4 inline-flex items-center gap-2 text-sm text-text-dim hover:text-foreground">
+      {/* En-tête du bon de réception — visible uniquement à l'impression */}
+      <div className="mb-6 hidden print:block">
+        <div className="flex items-end justify-between border-b-2 border-foreground pb-3">
+          <div>
+            <p className="font-heading text-2xl font-bold text-foreground">MULTIREX AUTO</p>
+            <p className="text-sm text-foreground">Bon de réception</p>
+          </div>
+          <div className="text-right text-sm text-foreground">
+            <p className="text-base font-bold">Réception n° {header.n_reception}</p>
+            <p>Date : {header.date_achat ? new Date(header.date_achat).toLocaleDateString("fr-FR") : "—"}</p>
+          </div>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-foreground">
+          <p><span className="font-semibold">Fournisseur :</span> {header.fournisseurNom || "—"}</p>
+          <p className="text-right"><span className="font-semibold">Statut :</span> {header.terminee ? "Terminée" : "Brouillon"}</p>
+          <p><span className="font-semibold">Montant HT :</span> {fmtPrice(header.montant_ht)}</p>
+          <p className="text-right"><span className="font-semibold">Pièces reçues :</span> {pieces.length}</p>
+        </div>
+      </div>
+
+      <Link href="/receptions" className="mb-4 inline-flex items-center gap-2 text-sm text-text-dim hover:text-foreground print:hidden">
         <ArrowLeft size={14} /> Retour aux réceptions
       </Link>
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <PageHeader
           title={`Réception n° ${header.n_reception}`}
           description={
             header.date_achat ? `Reçue le ${new Date(header.date_achat).toLocaleDateString("fr-FR")}` : undefined
           }
         />
-        <Badge
-          className={
-            header.terminee
-              ? "border border-[rgba(52,211,153,0.20)] bg-[rgba(52,211,153,0.10)] text-emerald-600"
-              : "border border-[rgba(96,165,250,0.20)] bg-[rgba(96,165,250,0.10)] text-blue-600"
-          }
-        >
-          {header.terminee ? "Terminée" : "Brouillon"}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => window.print()}>
+            <Printer size={14} className="mr-1" /> Imprimer le bon
+          </Button>
+          <Badge
+            className={
+              header.terminee
+                ? "border border-[rgba(52,211,153,0.20)] bg-[rgba(52,211,153,0.10)] text-emerald-600"
+                : "border border-[rgba(96,165,250,0.20)] bg-[rgba(96,165,250,0.10)] text-blue-600"
+            }
+          >
+            {header.terminee ? "Terminée" : "Brouillon"}
+          </Badge>
+        </div>
       </div>
 
       {header.fournisseurId != null && (
-        <p className="mb-5 text-sm text-text-dim">
+        <p className="mb-5 text-sm text-text-dim print:hidden">
           Fournisseur :{" "}
           <Link href={`/fournisseurs/${header.fournisseurId}`} className="font-medium text-brand hover:underline">
             {header.fournisseurNom}
@@ -340,7 +366,7 @@ export default function ReceptionDetailPage({
       )}
 
       {/* KPIs */}
-      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-5">
+      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-5 print:hidden">
         <Card><CardContent className="p-4"><p className="text-xs font-semibold uppercase text-text-dim">Pièces reçues</p><p className="text-2xl font-bold text-foreground">{pieces.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs font-semibold uppercase text-text-dim">En stock</p><p className="text-2xl font-bold text-emerald-600">{nbStock}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs font-semibold uppercase text-text-dim">Réservées</p><p className="text-2xl font-bold text-amber-600">{nbResa}</p></CardContent></Card>
