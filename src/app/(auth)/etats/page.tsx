@@ -215,7 +215,8 @@ export default function EtatsPage() {
           </div>
 
           <p className="mt-6 text-xs text-text-muted">
-            Prochaines briques du module : achats mensuels, top 15 ventes, déclarations douanières, export Excel.
+            Constructeur d&apos;états disponible sur 3 sources (moteurs, réceptions, ventes), avec synthèses chiffrées et export Excel.
+            Prochaine brique : déclarations douanières.
           </p>
         </>
       )}
