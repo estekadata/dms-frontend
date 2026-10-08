@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, TrendingUp, Target, BarChart3, Euro,
   PackageOpen, Search, Cog, ClipboardList, History,
-  Wrench, Building2, Users, LogOut, Inbox, RefreshCw, X, Layers, ShoppingCart, FileText,
+  Wrench, Building2, Users, LogOut, Inbox, RefreshCw, X, Layers, ShoppingCart, FileText, LayoutGrid,
 } from "lucide-react";
 
 const navSections = [
@@ -95,6 +95,20 @@ export function Sidebar({ userName, userRole, open = false, onClose = () => {} }
           )}
         >
           <LayoutDashboard size={18} /> Tableau de bord
+        </Link>
+
+        {/* Espace de travail multi-onglets */}
+        <Link
+          href="/workspace"
+          onClick={onClose}
+          className={cn(
+            "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
+            pathname === "/workspace"
+              ? "bg-brand-soft text-brand"
+              : "text-text-dim hover:bg-surface-hover hover:text-foreground"
+          )}
+        >
+          <LayoutGrid size={18} /> Espace de travail
         </Link>
 
         {navSections.map((section) => (
