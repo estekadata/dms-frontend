@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PeriodFilter, inPeriod, type Period } from "@/components/period-filter";
@@ -31,6 +32,7 @@ type Fournisseur = {
   autres_infos: string | null;
   careco: boolean | null;
   actionnaire: boolean | null;
+  decompte_1pct: boolean | null;
 };
 
 type Reception = {
@@ -77,6 +79,23 @@ export default function FournisseurProfilePage({
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [period, setPeriod] = useState<Period>("all");
+  const [saving1pct, setSaving1pct] = useState(false);
+
+  async function toggle1pct() {
+    if (!fournisseur) return;
+    const next = !fournisseur.decompte_1pct;
+    setSaving1pct(true);
+    const { error } = await supabase
+      .from("tbl_fournisseurs")
+      .update({ decompte_1pct: next })
+      .eq("n_fournisseur", fournisseur.n_fournisseur);
+    setSaving1pct(false);
+    if (error) {
+      alert(`Erreur : ${error.message}`);
+      return;
+    }
+    setFournisseur({ ...fournisseur, decompte_1pct: next });
+  }
 
   useEffect(() => {
     if (!Number.isFinite(id)) {
@@ -103,7 +122,17 @@ export default function FournisseurProfilePage({
         setLoading(false);
         return;
       }
-      setFournisseur(fRow as Fournisseur);
+      // Lecture tolérante du flag 1 % (colonne optionnelle : si la migration
+      // n'est pas encore passée, la requête échoue et on garde false).
+      let d1 = false;
+      const { data: d1row } = await supabase
+        .from("tbl_fournisseurs")
+        .select("decompte_1pct")
+        .eq("n_fournisseur", id)
+        .maybeSingle();
+      if (d1row && typeof (d1row as any).decompte_1pct === "boolean") d1 = (d1row as any).decompte_1pct;
+      if (cancelled) return;
+      setFournisseur({ ...(fRow as Fournisseur), decompte_1pct: d1 });
 
       // 2. Réceptions de ce fournisseur
       const { data: recRows } = await supabase
@@ -272,20 +301,26 @@ export default function FournisseurProfilePage({
         description={`Fournisseur n° ${fournisseur.n_fournisseur}`}
       />
 
-      {(fournisseur.careco || fournisseur.actionnaire) && (
-        <div className="flex gap-2 mb-4">
-          {fournisseur.careco && (
-            <Badge className="bg-[rgba(96,165,250,0.10)] text-blue-600 border border-[rgba(96,165,250,0.20)] hover:bg-[rgba(96,165,250,0.15)]">
-              Careco
-            </Badge>
-          )}
-          {fournisseur.actionnaire && (
-            <Badge className="bg-[rgba(167,139,250,0.10)] text-purple-600 border border-[rgba(167,139,250,0.20)] hover:bg-[rgba(167,139,250,0.15)]">
-              Actionnaire
-            </Badge>
-          )}
-        </div>
-      )}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {fournisseur.careco && (
+          <Badge className="bg-[rgba(96,165,250,0.10)] text-blue-600 border border-[rgba(96,165,250,0.20)] hover:bg-[rgba(96,165,250,0.15)]">
+            Careco
+          </Badge>
+        )}
+        {fournisseur.actionnaire && (
+          <Badge className="bg-[rgba(167,139,250,0.10)] text-purple-600 border border-[rgba(167,139,250,0.20)] hover:bg-[rgba(167,139,250,0.15)]">
+            Actionnaire
+          </Badge>
+        )}
+        {fournisseur.decompte_1pct && (
+          <Badge className="border border-[rgba(251,191,36,0.20)] bg-[rgba(251,191,36,0.10)] text-amber-600">
+            Décompte 1 % sur facture
+          </Badge>
+        )}
+        <Button size="xs" variant="outline" onClick={toggle1pct} disabled={saving1pct}>
+          {saving1pct ? "…" : fournisseur.decompte_1pct ? "Retirer le décompte 1 %" : "Activer le décompte 1 %"}
+        </Button>
+      </div>
 
       {/* Coordonnées */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
