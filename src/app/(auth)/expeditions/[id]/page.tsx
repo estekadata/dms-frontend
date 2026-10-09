@@ -1,7 +1,7 @@
 "use client";
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Printer, Cog, Package, UserRound } from "lucide-react";
+import { ArrowLeft, Printer, Cog, Package, UserRound, FileText } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -265,6 +265,11 @@ export default function ExpeditionDetailPage({ params }: { params: Promise<{ id:
           description={header.date_chargement ? `Chargée le ${new Date(header.date_chargement).toLocaleDateString("fr-FR")}` : undefined}
         />
         <div className="flex items-center gap-2">
+          <Link href={`/douane?expedition=${header.n_expedition}`}>
+            <Button variant="outline">
+              <FileText size={14} className="mr-1" /> Déclaration douane
+            </Button>
+          </Link>
           <Button variant="outline" onClick={() => window.print()}>
             <Printer size={14} className="mr-1" /> Imprimer le bon
           </Button>
