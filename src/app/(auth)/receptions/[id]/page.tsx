@@ -1,7 +1,7 @@
 "use client";
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Package, Cog, Printer } from "lucide-react";
+import { ArrowLeft, Package, Cog, Printer, Tag } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -341,6 +341,11 @@ export default function ReceptionDetailPage({
           }
         />
         <div className="flex items-center gap-2">
+          <Link href={`/etiquettes?source=moteurs&reception=${header.n_reception}`}>
+            <Button variant="outline">
+              <Tag size={14} className="mr-1" /> Étiquettes
+            </Button>
+          </Link>
           <Button variant="outline" onClick={() => window.print()}>
             <Printer size={14} className="mr-1" /> Imprimer le bon
           </Button>
