@@ -41,6 +41,22 @@ export default function NouvelleReceptionPage() {
   const [dateAchat, setDateAchat] = useState(() => new Date().toISOString().slice(0, 10));
   const [montantHt, setMontantHt] = useState("");
   const [observations, setObservations] = useState("");
+  const [facture, setFacture] = useState(false);
+  const [dateFacture, setDateFacture] = useState("");
+  const [nbAttendus, setNbAttendus] = useState("");
+
+  // N° de réception auto-incrémenté (CDC 6.3) — prérempli, modifiable au besoin
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("tbl_receptions")
+        .select("n_reception")
+        .order("n_reception", { ascending: false })
+        .limit(1);
+      const next = (((data || [])[0] as any)?.n_reception || 0) + 1;
+      setNReception((prev) => prev || String(next));
+    })();
+  }, []);
 
   // Fournisseur picker
   const [fournisseurSearch, setFournisseurSearch] = useState("");
@@ -161,10 +177,20 @@ export default function NouvelleReceptionPage() {
         n_fournisseur,
         date_achat: new Date(dateAchat).toISOString(),
         montant_ht: montantHt ? parseFloat(montantHt) : null,
+        facture,
+        date_facture_fourniss: facture && dateFacture ? new Date(dateFacture).toISOString() : null,
         autres_info: observations || null,
         reception_terminee: false,
       });
       if (errR) throw new Error(`Création réception échouée : ${errR.message}`);
+
+      // 3b. Nombre de moteurs attendus (colonne Supabase ; tolérant si migration non exécutée)
+      if (nbAttendus.trim()) {
+        await supabase
+          .from("tbl_receptions")
+          .update({ nb_moteurs_attendus: parseInt(nbAttendus, 10) })
+          .eq("n_reception", n_reception);
+      }
 
       // 4. Calcul du prochain n_moteur (offset à partir de MAX existant)
       const { data: maxM } = await supabase
@@ -350,6 +376,37 @@ export default function NouvelleReceptionPage() {
                 className="mt-1 bg-surface-alt border-border text-foreground"
               />
             </div>
+            <div>
+              <Label htmlFor="nb_attendus" className="text-text-dim">Nombre de moteurs attendus</Label>
+              <Input
+                id="nb_attendus"
+                type="number"
+                min="0"
+                value={nbAttendus}
+                onChange={(e) => setNbAttendus(e.target.value)}
+                placeholder="Ex: 40"
+                className="mt-1 bg-surface-alt border-border text-foreground"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="flex items-center gap-2 pt-6 text-sm text-text-dim">
+              <input type="checkbox" checked={facture} onChange={(e) => setFacture(e.target.checked)} className="h-4 w-4 rounded border-border bg-surface-alt" />
+              Facturé
+            </label>
+            {facture && (
+              <div>
+                <Label htmlFor="date_facture" className="text-text-dim">Date de facture</Label>
+                <Input
+                  id="date_facture"
+                  type="date"
+                  value={dateFacture}
+                  onChange={(e) => setDateFacture(e.target.value)}
+                  className="mt-1 bg-surface-alt border-border text-foreground"
+                />
+              </div>
+            )}
           </div>
 
           <div>
