@@ -7,10 +7,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { SortHeader, useClientSort } from "@/components/sortable";
 import { Badge } from "@/components/ui/badge";
 
-type Tab = "Réceptions" | "Expéditions" | "Stats";
+type Tab = "Réceptions" | "Expéditions" | "Vendeurs" | "Stats";
 
 type Reception = { n_reception: number; date_reception: string; fournisseur?: string; nb_moteurs?: number; montant_total?: number; };
 type Expedition = { n_expedition: number; date_validation: string; client?: string; code_moteur?: string; prix_vente_moteur?: number; };
+type Vendeur = { n_expedition: number; date: string | null; client: string; employe: string; terminee: boolean };
 type Stats = { mois: string; recus: number; vendus: number; };
 
 export default function HistoriquePage() {
@@ -18,10 +19,26 @@ export default function HistoriquePage() {
   const [receptions, setReceptions] = useState<Reception[]>([]);
   const [expeditions, setExpeditions] = useState<Expedition[]>([]);
   const [stats, setStats] = useState<Stats[]>([]);
+  const [vendeurs, setVendeurs] = useState<Vendeur[]>([]);
+  const [empOptions, setEmpOptions] = useState<string[]>([]);
+  const [empError, setEmpError] = useState(false);
+  const [savedExp, setSavedExp] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const recSort = useClientSort(receptions);
   const expSort = useClientSort(expeditions);
   const statSort = useClientSort(stats);
+
+  async function saveEmploye(n_expedition: number, val: string) {
+    setVendeurs((prev) => prev.map((v) => (v.n_expedition === n_expedition ? { ...v, employe: val } : v)));
+    const { error } = await supabase.from("tbl_expeditions").update({ employe: val.trim() || null }).eq("n_expedition", n_expedition);
+    if (error) {
+      setEmpError(true);
+      return;
+    }
+    setEmpError(false);
+    setSavedExp(n_expedition);
+    setTimeout(() => setSavedExp((c) => (c === n_expedition ? null : c)), 1500);
+  }
 
   useEffect(() => {
     async function load() {
@@ -78,6 +95,41 @@ export default function HistoriquePage() {
           code_moteur: codeByMotor[r.n_moteur] || "—",
           prix_vente_moteur: r.prix_vente_moteur,
         })));
+      } else if (tab === "Vendeurs") {
+        // Attribution du vendeur par expédition (saisie en masse)
+        const { data: exps, error: expErr } = await supabase
+          .from("tbl_expeditions")
+          .select("n_expedition, n_client, date_chargement, employe, expedition_terminee")
+          .order("date_chargement", { ascending: false, nullsFirst: false })
+          .limit(200);
+        if (expErr) setEmpError(true);
+        const rows = (exps as any[]) || [];
+        const clientIds = [...new Set(rows.map((e) => e.n_client).filter(Boolean))] as number[];
+        const nameById: Record<number, string> = {};
+        for (let i = 0; i < clientIds.length; i += 400) {
+          const slice = clientIds.slice(i, i + 400);
+          const { data } = await supabase.from("tbl_clients").select("n_client, societe, nom_usage, nom_contact").in("n_client", slice);
+          (data || []).forEach((c: any) => {
+            nameById[c.n_client] = c.societe || c.nom_usage || c.nom_contact || `Client #${c.n_client}`;
+          });
+        }
+        setVendeurs(
+          rows.map((e) => ({
+            n_expedition: e.n_expedition,
+            date: e.date_chargement,
+            client: e.n_client != null ? nameById[e.n_client] || `Client #${e.n_client}` : "—",
+            employe: e.employe || "",
+            terminee: !!e.expedition_terminee,
+          }))
+        );
+        // Options vendeurs : prénoms déjà utilisés sur les moteurs
+        const { data: us } = await supabase
+          .from("tbl_moteurs")
+          .select("utilisateur")
+          .not("utilisateur", "is", null)
+          .order("n_moteur", { ascending: false })
+          .limit(3000);
+        setEmpOptions([...new Set((us || []).map((u: any) => u.utilisateur).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b))) as string[]);
       } else {
         const cutoff = new Date();
         cutoff.setMonth(cutoff.getMonth() - 12);
@@ -132,7 +184,7 @@ export default function HistoriquePage() {
       <PageHeader title="Historique" description="Réceptions, expéditions et statistiques" />
 
       <div className="flex bg-surface-alt rounded-lg border border-border overflow-hidden mb-6 w-fit">
-        {(["Réceptions", "Expéditions", "Stats"] as Tab[]).map((t) => (
+        {(["Réceptions", "Expéditions", "Vendeurs", "Stats"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -241,6 +293,61 @@ export default function HistoriquePage() {
             </div>
           </>
         )
+      ) : tab === "Vendeurs" ? (
+        <>
+          <datalist id="emp-list-hist">
+            {empOptions.map((o) => <option key={o} value={o} />)}
+          </datalist>
+          <p className="mb-3 text-sm text-text-dim">
+            Attribue le <span className="font-medium text-foreground">vendeur</span> à chaque expédition (enregistré automatiquement). Ces données alimentent les stats par employé.
+            {empError && <span className="ml-2 text-amber-600">Colonne « employe » manquante (migration SQL à exécuter).</span>}
+          </p>
+          {vendeurs.length === 0 ? (
+            <div className="rounded-[14px] border border-border bg-surface py-10 text-center italic text-text-muted">Aucune expédition</div>
+          ) : (
+            <div className="overflow-hidden rounded-[14px] border border-border bg-surface">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-surface-alt text-text-dim text-xs uppercase">
+                    <tr>
+                      <th className="px-4 py-3 text-left">N°</th>
+                      <th className="px-4 py-3 text-left">Date</th>
+                      <th className="px-4 py-3 text-left">Client</th>
+                      <th className="px-4 py-3 text-left">Statut</th>
+                      <th className="px-4 py-3 text-left">Vendeur</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {vendeurs.map((v) => (
+                      <tr key={v.n_expedition} className="transition-colors hover:bg-surface-hover">
+                        <td className="px-4 py-2.5"><Link href={`/expeditions/${v.n_expedition}`} className="font-mono text-xs font-semibold text-brand hover:underline">#{v.n_expedition}</Link></td>
+                        <td className="px-4 py-2.5 text-text-dim">{v.date ? new Date(v.date).toLocaleDateString("fr-FR") : "—"}</td>
+                        <td className="px-4 py-2.5 font-medium text-foreground">{v.client}</td>
+                        <td className="px-4 py-2.5">
+                          <Badge className={v.terminee ? "border border-[rgba(52,211,153,0.20)] bg-[rgba(52,211,153,0.10)] text-emerald-600" : "border border-[rgba(96,165,250,0.20)] bg-[rgba(96,165,250,0.10)] text-blue-600"}>
+                            {v.terminee ? "Terminée" : "En cours"}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <input
+                              list="emp-list-hist"
+                              defaultValue={v.employe}
+                              placeholder="Prénom"
+                              onBlur={(e) => { if (e.target.value.trim() !== v.employe.trim()) saveEmploye(v.n_expedition, e.target.value); }}
+                              className="w-36 rounded border border-border bg-surface-alt px-2 py-1.5 text-sm text-foreground"
+                            />
+                            {savedExp === v.n_expedition && <span className="text-xs text-emerald-600">✓</span>}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
       ) : stats.length === 0 ? (
         <div className="rounded-[14px] border border-border bg-surface py-10 text-center italic text-text-muted">Aucune donnée</div>
       ) : (
