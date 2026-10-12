@@ -119,6 +119,29 @@ export default function DashboardPage() {
 
   return (
     <div>
+      {/* Bandeau de fraîcheur des données — visible uniquement si la synchro décroche */}
+      {sync && (sync.tone === "amber" || sync.tone === "red") && (
+        <Link
+          href="/admin/synchronisation"
+          className={`mb-6 flex items-center gap-3 rounded-[14px] border px-4 py-3 transition hover:opacity-90 ${
+            sync.tone === "red"
+              ? "border-destructive/30 bg-destructive/10 text-destructive"
+              : "border-amber-500/30 bg-amber-500/10 text-amber-600"
+          }`}
+        >
+          <AlertTriangle size={20} className="shrink-0" />
+          <div className="text-sm">
+            <p className="font-semibold">
+              {sync.tone === "red" ? "Données peut-être périmées" : "Synchronisation en retard"}
+            </p>
+            <p className="opacity-90">
+              Dernière mise à jour depuis Access {sync.label}. Les chiffres affichés peuvent ne pas être à jour —
+              cliquer pour vérifier la synchronisation.
+            </p>
+          </div>
+        </Link>
+      )}
+
       <div className="mb-8 text-center">
         <h1 className="font-heading text-3xl font-bold text-foreground">Tableau de bord</h1>
         <p className="mt-1 text-sm text-text-dim">Vue d&apos;ensemble et actions prioritaires</p>
