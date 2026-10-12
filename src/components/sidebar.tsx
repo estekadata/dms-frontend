@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, TrendingUp, Target, BarChart3, Euro,
   PackageOpen, Search, Cog, ClipboardList, History,
-  Wrench, Building2, Users, LogOut, Inbox, RefreshCw, X, Layers, ShoppingCart, FileText, LayoutGrid, Tag,
+  Wrench, Building2, Users, LogOut, Inbox, RefreshCw, X, Layers, ShoppingCart, FileText, LayoutGrid, Tag, FileCheck,
 } from "lucide-react";
 
 const navSections = [
@@ -18,6 +18,7 @@ const navSections = [
       { label: "Aide à la commande", href: "/recherches", icon: ShoppingCart },
       { label: "Analyse", href: "/analyse", icon: BarChart3 },
       { label: "États & rapports", href: "/etats", icon: FileText },
+      { label: "Déclaration douane", href: "/douane", icon: FileCheck },
       { label: "Mise à jour prix", href: "/prix", icon: Euro },
     ],
   },

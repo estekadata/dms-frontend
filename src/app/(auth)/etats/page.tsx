@@ -136,6 +136,9 @@ export default function EtatsPage() {
         <Link href="/etiquettes" className="rounded-full bg-surface-alt px-3 py-1.5 text-xs font-medium text-text-dim transition hover:bg-surface-hover">
           Étiquettes
         </Link>
+        <Link href="/douane" className="rounded-full bg-surface-alt px-3 py-1.5 text-xs font-medium text-text-dim transition hover:bg-surface-hover">
+          Déclaration douane
+        </Link>
       </div>
 
       <div className="mb-6 flex items-center gap-2 text-sm text-text-dim">
@@ -218,8 +221,8 @@ export default function EtatsPage() {
           </div>
 
           <p className="mt-6 text-xs text-text-muted">
-            Constructeur d&apos;états disponible sur 3 sources (moteurs, réceptions, ventes), avec synthèses chiffrées et export Excel.
-            Prochaine brique : déclarations douanières.
+            Constructeur d&apos;états sur 3 sources (moteurs, réceptions, ventes), étiquettes code-barres et déclarations
+            douanières par expédition — synthèses chiffrées et export Excel partout.
           </p>
         </>
       )}
