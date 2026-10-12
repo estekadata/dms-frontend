@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Plus, Trash2, Search } from "lucide-react";
@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ClientsInteresses } from "@/components/clients-interesses";
 
 type FournisseurLite = { n_fournisseur: number; nom_fournisseur: string | null };
 
@@ -389,7 +390,8 @@ export default function NouvelleReceptionPage() {
               </thead>
               <tbody className="divide-y divide-border">
                 {moteurs.map((m) => (
-                  <tr key={m.key}>
+                  <Fragment key={m.key}>
+                  <tr>
                     <td className="px-2 py-2">
                       <input
                         type="text"
@@ -447,6 +449,14 @@ export default function NouvelleReceptionPage() {
                       </button>
                     </td>
                   </tr>
+                  {m.code_moteur.trim() && (
+                    <tr>
+                      <td colSpan={6} className="px-2 pb-3 pt-0">
+                        <ClientsInteresses key={m.code_moteur} code={m.code_moteur} />
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
