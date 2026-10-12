@@ -1,6 +1,8 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
-import { MapPin, Search, CheckCircle2, Circle } from "lucide-react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { MapPin, Search, CheckCircle2, Circle, LayoutGrid } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,9 +27,11 @@ function empIdFromGeloc(g: string | null): number | null {
   return Number.isFinite(n) ? Math.round(n) : null;
 }
 
-export default function GeolocalisationPage() {
+function GeolocalisationInner() {
+  const sp = useSearchParams();
   const [mode, setMode] = useState<Mode>("serie");
   const [q, setQ] = useState("");
+  const [empReady, setEmpReady] = useState(false);
   const [rows, setRows] = useState<Mot[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [migMissing, setMigMissing] = useState(false);
@@ -52,11 +56,23 @@ export default function GeolocalisationPage() {
       setIdToName(i2n);
       setNameToId(n2i);
       setEmpNames([...i2n.values()].sort((a, b) => a.localeCompare(b, "fr", { numeric: true })));
+      setEmpReady(true);
     })();
   }, []);
 
-  async function runSearch() {
-    const term = q.trim();
+  // Arrivée depuis l'outil de rangement (?emp=F104) → recherche auto par emplacement
+  useEffect(() => {
+    const emp = sp.get("emp");
+    if (emp && empReady) {
+      setMode("emplacement");
+      setQ(emp);
+      runSearch("emplacement", emp);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [empReady]);
+
+  async function runSearch(searchMode: Mode = mode, rawTerm?: string) {
+    const term = (rawTerm ?? q).trim();
     if (!term) return;
     setLoading(true);
     setRows(null);
@@ -64,9 +80,9 @@ export default function GeolocalisationPage() {
     // 1. Candidats + affichage (noms de type lisibles via v_moteurs_dispo)
     const DISP = "n_moteur, num_interne_moteur, nom_type_moteur, code_moteur, num_serie, marque";
     let dispRows: any[] = [];
-    if (mode === "serie" || mode === "type") {
+    if (searchMode === "serie" || searchMode === "type") {
       let dq = supabase.from("v_moteurs_dispo").select(DISP).eq("est_disponible", 1).limit(300);
-      if (mode === "serie") dq = dq.ilike("num_serie", `%${term}%`);
+      if (searchMode === "serie") dq = dq.ilike("num_serie", `%${term}%`);
       else dq = dq.or(`nom_type_moteur.ilike.%${term}%,code_moteur.ilike.%${term}%`);
       const { data } = await dq;
       dispRows = (data as any[]) || [];
@@ -151,7 +167,12 @@ export default function GeolocalisationPage() {
 
   return (
     <div>
-      <PageHeader title="Géolocalisation" description="Emplacement physique (chiffre + lettre) des moteurs : recherche, assignation, validation." />
+      <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
+        <PageHeader title="Géolocalisation" description="Emplacement physique (chiffre + lettre) des moteurs : recherche, assignation, validation." />
+        <Link href="/geolocalisation/rangement">
+          <Button variant="outline"><LayoutGrid size={14} className="mr-1" /> Outil de rangement</Button>
+        </Link>
+      </div>
 
       {migMissing && (
         <div className="mb-4 rounded-[14px] border border-[rgba(251,191,36,0.25)] bg-[rgba(251,191,36,0.06)] px-4 py-3 text-sm text-amber-700">
@@ -180,7 +201,7 @@ export default function GeolocalisationPage() {
               />
               <datalist id="emp-all">{empNames.map((n) => <option key={n} value={n} />)}</datalist>
             </div>
-            <Button onClick={runSearch} disabled={loading} className="bg-brand text-white hover:bg-brand/80">
+            <Button onClick={() => runSearch()} disabled={loading} className="bg-brand text-white hover:bg-brand/80">
               <Search size={14} className="mr-1" /> {loading ? "Recherche…" : "Rechercher"}
             </Button>
           </div>
@@ -254,5 +275,13 @@ export default function GeolocalisationPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function GeolocalisationPage() {
+  return (
+    <Suspense fallback={<div className="py-16 text-center text-text-muted">Chargement…</div>}>
+      <GeolocalisationInner />
+    </Suspense>
   );
 }
