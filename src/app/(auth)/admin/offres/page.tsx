@@ -5,7 +5,8 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, XCircle, RefreshCw } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle2, XCircle, RefreshCw, Upload } from "lucide-react";
 
 type Offer = {
   id: number;
@@ -111,9 +112,16 @@ export default function OffresAdminPage() {
         <p className="text-sm text-text-dim">
           {offers.length} offre(s) en attente, regroupees par centre VHU.
         </p>
-        <Button variant="outline" size="sm" onClick={load} disabled={loading || busy}>
-          <RefreshCw size={14} className="mr-2" /> Rafraichir
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link href="/admin/offres/import">
+            <Button variant="outline" size="sm">
+              <Upload size={14} className="mr-2" /> Importer un Excel
+            </Button>
+          </Link>
+          <Button variant="outline" size="sm" onClick={load} disabled={loading || busy}>
+            <RefreshCw size={14} className="mr-2" /> Rafraichir
+          </Button>
+        </div>
       </div>
 
       {flash && (
