@@ -76,16 +76,39 @@ function StatutBadge({ row }: { row: PieceRow }) {
   );
 }
 
+function PrixCell({ row, editable, onPrix }: { row: PieceRow; editable?: boolean; onPrix?: (id: number, prix: number | null) => void }) {
+  if (!editable) return <>{fmtPrice(row.prix)}</>;
+  return (
+    <input
+      type="number"
+      step="0.01"
+      min="0"
+      defaultValue={row.prix ?? ""}
+      placeholder="—"
+      onBlur={(e) => {
+        const raw = e.target.value.trim();
+        const v = raw === "" ? null : parseFloat(raw.replace(",", "."));
+        onPrix?.(row.id, v != null && Number.isFinite(v) ? v : null);
+      }}
+      className="w-24 rounded border border-border bg-surface-alt px-2 py-1 text-right text-sm tabular-nums text-foreground"
+    />
+  );
+}
+
 function PieceTable({
   rows,
   labelCol,
   subCol,
   extraCol,
+  editable,
+  onPrix,
 }: {
   rows: PieceRow[];
   labelCol: string;
   subCol: string;
   extraCol: string;
+  editable?: boolean;
+  onPrix?: (id: number, prix: number | null) => void;
 }) {
   const { sorted, sortKey, sortDir, onSort } = useClientSort(rows);
   return (
@@ -132,7 +155,7 @@ function PieceTable({
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-text-muted">{r.sub || "—"}</td>
                   <td className="px-4 py-3 text-text-dim">{r.extra || "—"}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-text-dim">{fmtPrice(r.prix)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-text-dim"><PrixCell row={r} editable={editable} onPrix={onPrix} /></td>
                   <td className="px-4 py-3"><StatutBadge row={r} /></td>
                 </tr>
               ))}
@@ -157,6 +180,28 @@ export default function ReceptionDetailPage({
   const [boites, setBoites] = useState<PieceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [flash, setFlash] = useState<string | null>(null);
+
+  async function savePrixMoteur(nMoteur: number, prix: number | null) {
+    const { error } = await supabase.from("tbl_moteurs").update({ prix_achat_moteur: prix, date_modif: new Date().toISOString() }).eq("n_moteur", nMoteur);
+    if (error) { setFlash(`Enregistrement KO : ${error.message}`); return; }
+    setMoteurs((prev) => prev.map((m) => (m.id === nMoteur ? { ...m, prix } : m)));
+  }
+  async function savePrixBoite(nBv: number, prix: number | null) {
+    const { error } = await supabase.from("tbl_boites").update({ achat_bv: prix }).eq("n_bv", nBv);
+    if (error) { setFlash(`Enregistrement KO : ${error.message}`); return; }
+    setBoites((prev) => prev.map((b) => (b.id === nBv ? { ...b, prix } : b)));
+  }
+  async function setTerminee(val: boolean) {
+    setBusy(true);
+    const { error } = await supabase.from("tbl_receptions").update({ reception_terminee: val }).eq("n_reception", id);
+    setBusy(false);
+    if (error) { setFlash(`Erreur : ${error.message}`); return; }
+    setHeader((h) => (h ? { ...h, terminee: val } : h));
+    setFlash(val ? "Réception validée." : "Réception rouverte (brouillon).");
+    setTimeout(() => setFlash(null), 2500);
+  }
 
   useEffect(() => {
     if (!Number.isFinite(id)) {
@@ -306,6 +351,9 @@ export default function ReceptionDetailPage({
   const nbStock = pieces.filter((p) => p.statut === "stock").length;
   const nbResa = pieces.filter((p) => p.statut === "resa").length;
   const nbVendu = pieces.filter((p) => p.statut === "vendu").length;
+  const nbChiffres = moteurs.filter((m) => m.prix != null && m.prix > 0).length;
+  const toutChiffre = moteurs.length > 0 && nbChiffres === moteurs.length;
+  const editable = !header.terminee;
 
   return (
     <div>
@@ -349,6 +397,13 @@ export default function ReceptionDetailPage({
           <Button variant="outline" onClick={() => window.print()}>
             <Printer size={14} className="mr-1" /> Imprimer le bon
           </Button>
+          {header.terminee ? (
+            <Button variant="outline" onClick={() => setTerminee(false)} disabled={busy}>Rouvrir</Button>
+          ) : (
+            <Button onClick={() => setTerminee(true)} disabled={busy} className="bg-brand text-white hover:bg-brand/80">
+              {busy ? "…" : "Valider la réception"}
+            </Button>
+          )}
           <Badge
             className={
               header.terminee
@@ -360,6 +415,15 @@ export default function ReceptionDetailPage({
           </Badge>
         </div>
       </div>
+
+      {/* Chiffrage en brouillon */}
+      {editable && moteurs.length > 0 && (
+        <div className={`mb-4 flex flex-wrap items-center gap-2 rounded-[14px] border px-4 py-3 text-sm print:hidden ${toutChiffre ? "border-[rgba(52,211,153,0.25)] bg-[rgba(52,211,153,0.06)] text-emerald-700" : "border-[rgba(96,165,250,0.25)] bg-[rgba(96,165,250,0.06)] text-blue-700"}`}>
+          <span className="font-semibold">{nbChiffres}/{moteurs.length} moteurs chiffrés</span>
+          <span className="text-text-dim">— saisis les prix d&apos;achat ci-dessous, puis valide la réception{toutChiffre ? " (tout est chiffré ✓)" : ""}.</span>
+        </div>
+      )}
+      {flash && <div className="mb-4 rounded-lg bg-surface-alt px-3 py-2 text-sm text-text-dim print:hidden">{flash}</div>}
 
       {header.fournisseurId != null && (
         <p className="mb-5 text-sm text-text-dim print:hidden">
@@ -384,7 +448,7 @@ export default function ReceptionDetailPage({
           <h3 className="mb-3 flex items-center gap-2 font-semibold text-foreground">
             <Cog size={16} className="text-text-dim" /> Moteurs ({moteurs.length})
           </h3>
-          <PieceTable rows={moteurs} labelCol="Type moteur" subCol="Num série" extraCol="Marque" />
+          <PieceTable rows={moteurs} labelCol="Type moteur" subCol="Num série" extraCol="Marque" editable={editable} onPrix={savePrixMoteur} />
         </div>
       )}
 
@@ -393,7 +457,7 @@ export default function ReceptionDetailPage({
           <h3 className="mb-3 flex items-center gap-2 font-semibold text-foreground">
             <Package size={16} className="text-text-dim" /> Boîtes de vitesses ({boites.length})
           </h3>
-          <PieceTable rows={boites} labelCol="Réf BV" subCol="Num interne" extraCol="Type" />
+          <PieceTable rows={boites} labelCol="Réf BV" subCol="Num interne" extraCol="Type" editable={editable} onPrix={savePrixBoite} />
         </div>
       )}
 
