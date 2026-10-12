@@ -139,6 +139,9 @@ export default function EtatsPage() {
         <Link href="/douane" className="rounded-full bg-surface-alt px-3 py-1.5 text-xs font-medium text-text-dim transition hover:bg-surface-hover">
           Déclaration douane
         </Link>
+        <Link href="/etats/audit-prix" className="rounded-full bg-surface-alt px-3 py-1.5 text-xs font-medium text-text-dim transition hover:bg-surface-hover">
+          Audit des prix
+        </Link>
       </div>
 
       <div className="mb-6 flex items-center gap-2 text-sm text-text-dim">
