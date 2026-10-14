@@ -44,6 +44,8 @@ function EtiquettesInner() {
   const [terme, setTerme] = useState("");
   const [liste, setListe] = useState("");
   const [cols, setCols] = useState(3);
+  const [filtre, setFiltre] = useState("");
+  const [tri, setTri] = useState("num-asc");
   const [withBarcode, setWithBarcode] = useState(true);
   const [withPrix, setWithPrix] = useState(false);
   const [items, setItems] = useState<Item[] | null>(null);
@@ -129,11 +131,32 @@ function EtiquettesInner() {
       return next;
     });
   }
+  function visibleItems(): Item[] {
+    if (!items) return [];
+    const f = filtre.trim().toLowerCase();
+    let v = items;
+    if (f) {
+      v = v.filter((it) =>
+        [it.key, it.type, it.sub, it.serie, it.code, it.interne, it.reception].some(
+          (x) => x != null && String(x).toLowerCase().includes(f)
+        )
+      );
+    }
+    const [field, dir] = tri.split("-");
+    const mul = dir === "desc" ? -1 : 1;
+    return [...v].sort((a, b) => {
+      if (field === "num") return (Number(a.key) - Number(b.key)) * mul;
+      if (field === "type") return String(a.type || "").localeCompare(String(b.type || ""), "fr", { numeric: true }) * mul;
+      if (field === "recep") return ((Number(a.reception) || 0) - (Number(b.reception) || 0)) * mul;
+      if (field === "date") return String(a.date || "").localeCompare(String(b.date || "")) * mul;
+      return 0;
+    });
+  }
   function selectAll() {
-    setSelected(new Set((items || []).map((m) => m.key)));
+    setSelected((prev) => { const n = new Set(prev); visibleItems().forEach((it) => n.add(it.key)); return n; });
   }
   function selectNone() {
-    setSelected(new Set());
+    setSelected((prev) => { const n = new Set(prev); visibleItems().forEach((it) => n.delete(it.key)); return n; });
   }
 
   // Auto-chargement si on arrive avec ?reception=... (depuis une fiche réception)
@@ -248,15 +271,37 @@ function EtiquettesInner() {
         <div className="rounded-[14px] border border-border bg-surface py-10 text-center italic text-text-muted print:hidden">Aucun article trouvé.</div>
       ) : (
         <>
+          {/* Filtre + tri du set généré */}
+          <div className="mb-3 flex flex-wrap items-center gap-2 print:hidden">
+            <input
+              value={filtre}
+              onChange={(e) => setFiltre(e.target.value)}
+              placeholder="Filtrer (n°, type, série, réception…)"
+              className="w-64 rounded-lg border border-border bg-surface-alt px-3 py-2 text-sm text-foreground"
+            />
+            <select value={tri} onChange={(e) => setTri(e.target.value)} className="rounded-lg border border-border bg-surface-alt px-3 py-2 text-sm text-foreground">
+              <option value="num-asc">N° croissant</option>
+              <option value="num-desc">N° décroissant</option>
+              <option value="type-asc">Type (A→Z)</option>
+              <option value="recep-asc">Réception croissante</option>
+              <option value="recep-desc">Réception décroissante</option>
+              <option value="date-desc">Date (récent→ancien)</option>
+              <option value="date-asc">Date (ancien→récent)</option>
+            </select>
+          </div>
+          {(() => {
+            const visible = visibleItems();
+            return (
+          <>
           <div className="mb-3 flex flex-wrap items-center gap-3 text-sm text-text-dim print:hidden">
             <span className="font-medium text-foreground">{selected.size}/{items.length} sélectionnée{selected.size > 1 ? "s" : ""}</span>
-            <span className="text-text-muted">— coche les étiquettes à imprimer.</span>
-            <button onClick={selectAll} className="rounded-full bg-surface-alt px-3 py-1 text-xs font-medium text-text-dim hover:bg-surface-hover">Tout sélectionner</button>
-            <button onClick={selectNone} className="rounded-full bg-surface-alt px-3 py-1 text-xs font-medium text-text-dim hover:bg-surface-hover">Aucune</button>
+            {filtre.trim() && <span className="text-text-muted">· {visible.length} affichée{visible.length > 1 ? "s" : ""}</span>}
+            <button onClick={selectAll} className="rounded-full bg-surface-alt px-3 py-1 text-xs font-medium text-text-dim hover:bg-surface-hover">{filtre.trim() ? "Cocher les affichées" : "Tout sélectionner"}</button>
+            <button onClick={selectNone} className="rounded-full bg-surface-alt px-3 py-1 text-xs font-medium text-text-dim hover:bg-surface-hover">{filtre.trim() ? "Décocher les affichées" : "Aucune"}</button>
             {items.length >= MAX_LABELS && <span className="text-text-muted">(limité à {MAX_LABELS})</span>}
           </div>
           <div className={`grid gap-2 ${colClass}`}>
-            {items.map((it) => {
+            {visible.map((it) => {
               const on = selected.has(it.key);
               return (
               <div key={it.key} className={`relative flex break-inside-avoid flex-col rounded-md border bg-white p-2 text-black transition ${on ? "border-foreground/70" : "border-dashed border-foreground/30 opacity-40 print:hidden"}`}>
@@ -292,6 +337,9 @@ function EtiquettesInner() {
               );
             })}
           </div>
+          </>
+            );
+          })()}
         </>
       )}
     </div>
