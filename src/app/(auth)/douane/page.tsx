@@ -137,13 +137,22 @@ function DouaneInner() {
       if (data.length < 1000) break;
     }
     const motIds = [...new Set(em.map((r) => r.n_moteur).filter(Boolean))] as number[];
-    const motInfo: Record<number, { type: string; marque: string; energie: string; serie: string }> = {};
+    const motInfo: Record<number, { type: string; marque: string; energie: string; serie: string; ntype: number | null }> = {};
     for (let i = 0; i < motIds.length; i += 500) {
       const slice = motIds.slice(i, i + 500);
-      const { data } = await supabase.from("v_moteurs_dispo").select("n_moteur, nom_type_moteur, code_moteur, marque, energie, num_serie").in("n_moteur", slice);
+      const { data } = await supabase.from("v_moteurs_dispo").select("n_moteur, n_type_moteur, nom_type_moteur, code_moteur, marque, energie, num_serie").in("n_moteur", slice);
       (data || []).forEach((m: any) => {
-        motInfo[m.n_moteur] = { type: m.nom_type_moteur || m.code_moteur || `Moteur ${m.n_moteur}`, marque: m.marque || "", energie: m.energie || "", serie: m.num_serie || "" };
+        motInfo[m.n_moteur] = { type: m.nom_type_moteur || m.code_moteur || `Moteur ${m.n_moteur}`, marque: m.marque || "", energie: m.energie || "", serie: m.num_serie || "", ntype: m.n_type_moteur ?? null };
       });
+    }
+
+    // Codes SH configurés par type (tbl_types_moteurs.hs_code) — prioritaires sur le défaut par énergie
+    const typeIds = [...new Set(Object.values(motInfo).map((m) => m.ntype).filter((x): x is number => x != null))];
+    const typeHs: Record<number, string> = {};
+    for (let i = 0; i < typeIds.length; i += 500) {
+      const slice = typeIds.slice(i, i + 500);
+      const { data } = await supabase.from("tbl_types_moteurs").select("n_type_moteur, hs_code").in("n_type_moteur", slice);
+      (data || []).forEach((t: any) => { if (t.hs_code && String(t.hs_code).trim()) typeHs[t.n_type_moteur] = String(t.hs_code).trim(); });
     }
 
     // Boîtes expédiées
@@ -177,7 +186,7 @@ function DouaneInner() {
         designation: [info.type, info.marque].filter(Boolean).join(" "),
         serie: info.serie,
         cat: catMoteur(info.energie),
-        hs: hsMoteur(info.energie),
+        hs: (info.ntype != null && typeHs[info.ntype]) || hsMoteur(info.energie),
         valeur: r.prix_vente_moteur || 0,
       });
     }
@@ -254,6 +263,9 @@ function DouaneInner() {
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3 print:hidden">
         <PageHeader title="Déclaration douanière" description="Récapitulatif d'exportation par expédition / conteneur (marchandises, valeurs, nomenclature SH)." />
         <div className="flex items-center gap-2">
+          <Link href="/douane/codes">
+            <Button variant="outline"><FileText size={14} className="mr-1" /> Codes SH par type</Button>
+          </Link>
           <Button variant="outline" onClick={exportExcel} disabled={!header || !articles}>
             <FileSpreadsheet size={14} className="mr-1" /> Export Excel
           </Button>
@@ -347,7 +359,7 @@ function DouaneInner() {
             </table>
           </div>
           <p className="mt-1 text-xs text-text-muted">
-            Valeur déclarée en EUR{valeurArticles === 0 && header.montant_ht ? " (reprise du montant HT de l'expédition — valeurs unitaires non saisies)" : ""}. Nomenclature SH indicative, à valider avec le transitaire.
+            Valeur déclarée en EUR{valeurArticles === 0 && header.montant_ht ? " (reprise du montant HT de l'expédition — valeurs unitaires non saisies)" : ""}. Code SH repris du type quand il est renseigné (<Link href="/douane/codes" className="text-brand hover:underline">gérer les codes SH</Link>), sinon défaut par énergie — à valider avec le transitaire.
           </p>
 
           {/* Détail articles */}
