@@ -7,6 +7,7 @@ import { KPI_CATALOG, DEFAULT_KPIS, type DashboardKpis } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getDashboardKpis } from "@/lib/queries/dashboard";
 import { supabase } from "@/lib/supabase";
+import { useT } from "@/lib/i18n";
 import {
   TrendingUp, Target, BarChart3, Euro,
   PackageOpen, Search, Cog, ClipboardList,
@@ -91,6 +92,7 @@ function syncInfo(iso: string | null): { label: string; sub: string; tone: Tone 
 }
 
 export default function DashboardPage() {
+  const t = useT();
   const [kpis, setKpis] = useState<DashboardKpis | null>(null);
   const [alerts, setAlerts] = useState<AlertData | null>(null);
 
@@ -132,7 +134,7 @@ export default function DashboardPage() {
           <AlertTriangle size={20} className="shrink-0" />
           <div className="text-sm">
             <p className="font-semibold">
-              {sync.tone === "red" ? "Données peut-être périmées" : "Synchronisation en retard"}
+              {sync.tone === "red" ? t("Données peut-être périmées") : t("Synchronisation en retard")}
             </p>
             <p className="opacity-90">
               Dernière mise à jour depuis Access {sync.label}. Les chiffres affichés peuvent ne pas être à jour —
@@ -144,7 +146,7 @@ export default function DashboardPage() {
 
       <div className="mb-8 text-center">
         <h1 className="font-heading text-3xl font-bold text-foreground">Tableau de bord</h1>
-        <p className="mt-1 text-sm text-text-dim">Vue d&apos;ensemble et actions prioritaires</p>
+        <p className="mt-1 text-sm text-text-dim">{t("Vue d'ensemble et actions prioritaires")}</p>
       </div>
 
       {/* Alertes & actions */}
@@ -156,23 +158,23 @@ export default function DashboardPage() {
               icon={AlertTriangle}
               tone={alerts.rupture > 0 ? "brand" : "muted"}
               value={alerts.rupture.toLocaleString("fr-FR")}
-              label="recherchés en rupture"
-              sub="Stock épuisé & demandés → à sourcer"
+              label={t("recherchés en rupture")}
+              sub={t("Stock épuisé & demandés → à sourcer")}
             />
             <AlertCard
               href="/admin/offres"
               icon={Inbox}
               tone={alerts.pending > 0 ? "amber" : "muted"}
               value={alerts.pending.toLocaleString("fr-FR")}
-              label="offres VHU en attente"
-              sub="À valider côté admin"
+              label={t("offres VHU en attente")}
+              sub={t("À valider côté admin")}
             />
             <AlertCard
               href="/admin/synchronisation"
               icon={RefreshCw}
               tone={sync.tone}
               value={sync.label}
-              label="dernière synchro"
+              label={t("dernière synchro")}
               sub={sync.sub}
             />
           </div>
@@ -181,8 +183,8 @@ export default function DashboardPage() {
           {alerts.top.length > 0 && (
             <div className="mb-8 rounded-[14px] border border-border bg-surface p-5">
               <div className="mb-2 flex items-center justify-between">
-                <h2 className="text-base font-semibold text-text-dim">Top besoins — les plus demandés</h2>
-                <Link href="/besoins" className="text-sm text-brand hover:underline">Tout voir →</Link>
+                <h2 className="text-base font-semibold text-text-dim">{t("Top besoins — les plus demandés")}</h2>
+                <Link href="/besoins" className="text-sm text-brand hover:underline">{t("Tout voir")} →</Link>
               </div>
               <div className="divide-y divide-border">
                 {alerts.top.map((b, i) => (
@@ -239,7 +241,7 @@ export default function DashboardPage() {
 
       {/* Navigation */}
       {navGrid.map((section) => (
-        <div key={section.title} className="mb-8">
+        <div key={t(section.title)} className="mb-8">
           <h2 className="mb-3 text-base font-semibold text-text-dim">{section.title}</h2>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {section.items.map((item) => (
@@ -251,8 +253,8 @@ export default function DashboardPage() {
                 <div className="mb-3 text-brand transition-transform group-hover:scale-110">
                   <item.icon size={28} strokeWidth={1.8} />
                 </div>
-                <h3 className="font-semibold text-foreground">{item.label}</h3>
-                <p className="mt-1 text-xs text-text-dim">{item.desc}</p>
+                <h3 className="font-semibold text-foreground">{t(item.label)}</h3>
+                <p className="mt-1 text-xs text-text-dim">{t(item.desc)}</p>
               </Link>
             ))}
           </div>
