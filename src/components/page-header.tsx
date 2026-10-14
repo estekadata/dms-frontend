@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useT } from "@/lib/i18n";
 
 interface PageHeaderProps {
   title: string;
@@ -11,6 +12,7 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, icon, showBack = true }: PageHeaderProps) {
   const router = useRouter();
+  const t = useT();
 
   return (
     <div className="mb-6">
@@ -19,14 +21,14 @@ export function PageHeader({ title, description, icon, showBack = true }: PageHe
           onClick={() => router.push("/dashboard")}
           className="text-sm text-text-dim hover:text-foreground mb-3 flex items-center gap-1 transition-colors"
         >
-          ← Retour à l&apos;accueil
+          ← {t("Retour à l'accueil")}
         </button>
       )}
       <h1 className="font-heading text-2xl font-bold text-foreground">
         {icon && <span className="mr-2">{icon}</span>}
-        {title}
+        {t(title)}
       </h1>
-      {description && <p className="text-text-dim mt-1 text-sm">{description}</p>}
+      {description && <p className="text-text-dim mt-1 text-sm">{t(description)}</p>}
     </div>
   );
 }
