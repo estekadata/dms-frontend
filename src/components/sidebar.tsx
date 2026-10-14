@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useLang, useT } from "@/lib/i18n";
 import {
   LayoutDashboard, TrendingUp, Target, BarChart3, Euro,
   PackageOpen, Search, Cog, ClipboardList, History,
@@ -55,6 +56,8 @@ interface SidebarProps {
 export function Sidebar({ userName, userRole, open = false, onClose = () => {} }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const t = useT();
+  const { lang, setLang } = useLang();
 
   const roleLabel = { super_admin: "Super Admin", admin: "Admin", vhu: "VHU" }[userRole || "admin"] || userRole;
 
@@ -98,7 +101,7 @@ export function Sidebar({ userName, userRole, open = false, onClose = () => {} }
               : "text-text-dim hover:bg-surface-hover hover:text-foreground"
           )}
         >
-          <LayoutDashboard size={18} /> Tableau de bord
+          <LayoutDashboard size={18} /> {t("Tableau de bord")}
         </Link>
 
         {/* Espace de travail multi-onglets */}
@@ -112,11 +115,11 @@ export function Sidebar({ userName, userRole, open = false, onClose = () => {} }
               : "text-text-dim hover:bg-surface-hover hover:text-foreground"
           )}
         >
-          <LayoutGrid size={18} /> Espace de travail
+          <LayoutGrid size={18} /> {t("Espace de travail")}
         </Link>
 
         {navSections.map((section) => (
-          <div key={section.title}>
+          <div key={t(section.title)}>
             <p className="px-4 text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted mb-2">
               {section.title}
             </p>
@@ -133,7 +136,7 @@ export function Sidebar({ userName, userRole, open = false, onClose = () => {} }
                       : "text-text-dim hover:bg-surface-hover hover:text-foreground"
                   )}
                 >
-                  <item.icon size={18} /> {item.label}
+                  <item.icon size={18} /> {t(item.label)}
                 </Link>
               ))}
             </div>
@@ -143,7 +146,7 @@ export function Sidebar({ userName, userRole, open = false, onClose = () => {} }
         {userRole === "super_admin" && (
           <div>
             <p className="px-4 text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted mb-2">
-              Administration
+              {t("Administration")}
             </p>
             <div className="space-y-1">
               <Link
@@ -156,7 +159,7 @@ export function Sidebar({ userName, userRole, open = false, onClose = () => {} }
                     : "text-text-dim hover:bg-surface-hover hover:text-foreground"
                 )}
               >
-                <Users size={18} /> Utilisateurs
+                <Users size={18} /> {t("Utilisateurs")}
               </Link>
               <Link
                 href="/admin/offres"
@@ -168,7 +171,7 @@ export function Sidebar({ userName, userRole, open = false, onClose = () => {} }
                     : "text-text-dim hover:bg-surface-hover hover:text-foreground"
                 )}
               >
-                <Inbox size={18} /> Offres VHU
+                <Inbox size={18} /> {t("Offres VHU")}
               </Link>
               <Link
                 href="/admin/synchronisation"
@@ -180,20 +183,31 @@ export function Sidebar({ userName, userRole, open = false, onClose = () => {} }
                     : "text-text-dim hover:bg-surface-hover hover:text-foreground"
                 )}
               >
-                <RefreshCw size={18} /> Synchronisation
+                <RefreshCw size={18} /> {t("Synchronisation")}
               </Link>
             </div>
           </div>
         )}
       </nav>
 
-      {/* Logout */}
-      <div className="p-4 border-t border-border">
+      {/* Langue + Logout */}
+      <div className="space-y-2 border-t border-border p-4">
+        <div className="flex overflow-hidden rounded-lg border border-border bg-surface-alt text-xs">
+          {(["fr", "en"] as const).map((l) => (
+            <button
+              key={l}
+              onClick={() => setLang(l)}
+              className={cn("flex-1 py-1.5 font-medium uppercase transition-all", lang === l ? "bg-brand text-white" : "text-text-dim hover:bg-surface-hover")}
+            >
+              {l === "fr" ? "Français" : "English"}
+            </button>
+          ))}
+        </div>
         <button
           onClick={handleLogout}
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-text-dim bg-surface-alt hover:bg-surface-hover transition-all"
         >
-          <LogOut size={16} /> Se déconnecter
+          <LogOut size={16} /> {t("Se déconnecter")}
         </button>
       </div>
     </aside>
