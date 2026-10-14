@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, Fraunces } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { LanguageProvider } from "@/lib/i18n";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -24,8 +25,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fr" className={`${dmSans.variable} ${fraunces.variable} h-full`}>
       <body className="min-h-full bg-background text-foreground font-sans antialiased">
-        {children}
-        <Toaster position="top-right" />
+        <LanguageProvider>
+          {children}
+          <Toaster position="top-right" />
+        </LanguageProvider>
       </body>
     </html>
   );
