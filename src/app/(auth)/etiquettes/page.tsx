@@ -47,6 +47,7 @@ function EtiquettesInner() {
   const [withBarcode, setWithBarcode] = useState(true);
   const [withPrix, setWithPrix] = useState(false);
   const [items, setItems] = useState<Item[] | null>(null);
+  const [selected, setSelected] = useState<Set<string | number>>(new Set());
   const [loading, setLoading] = useState(false);
 
   const mapMoteur = (r: any): Item => ({
@@ -114,9 +115,26 @@ function EtiquettesInner() {
 
     const { data } = await q;
     const rows = (data as any[]) || [];
-    setItems(rows.map(isMot ? mapMoteur : mapBoite));
+    const mapped = rows.map(isMot ? mapMoteur : mapBoite);
+    setItems(mapped);
+    setSelected(new Set(mapped.map((m) => m.key))); // tout sélectionné par défaut
     setLoading(false);
   }, [source, mode, reception, terme, liste]);
+
+  function toggleOne(key: string | number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+  function selectAll() {
+    setSelected(new Set((items || []).map((m) => m.key)));
+  }
+  function selectNone() {
+    setSelected(new Set());
+  }
 
   // Auto-chargement si on arrive avec ?reception=... (depuis une fiche réception)
   useEffect(() => {
@@ -133,8 +151,8 @@ function EtiquettesInner() {
       </Link>
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3 print:hidden">
         <PageHeader title="Étiquettes" description="Génère des étiquettes de stock (code-barres scannable) pour les moteurs ou les boîtes." />
-        <Button variant="outline" onClick={() => window.print()} disabled={!items || items.length === 0}>
-          <Printer size={14} className="mr-1" /> Imprimer les étiquettes
+        <Button variant="outline" onClick={() => window.print()} disabled={selected.size === 0}>
+          <Printer size={14} className="mr-1" /> Imprimer {selected.size > 0 ? `(${selected.size})` : "les étiquettes"}
         </Button>
       </div>
 
@@ -217,7 +235,7 @@ function EtiquettesInner() {
       {items && items.length > 0 && (
         <div className="mb-3 hidden items-end justify-between border-b border-foreground pb-2 print:flex">
           <span className="font-heading text-lg font-bold text-foreground">MULTIREX AUTO — Étiquettes {source === "moteurs" ? "moteurs" : "boîtes"}</span>
-          <span className="text-sm text-foreground">{items.length} étiquette{items.length > 1 ? "s" : ""}{mode === "reception" && reception ? ` · réception n° ${reception}` : ""}</span>
+          <span className="text-sm text-foreground">{selected.size} étiquette{selected.size > 1 ? "s" : ""}{mode === "reception" && reception ? ` · réception n° ${reception}` : ""}</span>
         </div>
       )}
 
@@ -230,18 +248,27 @@ function EtiquettesInner() {
         <div className="rounded-[14px] border border-border bg-surface py-10 text-center italic text-text-muted print:hidden">Aucun article trouvé.</div>
       ) : (
         <>
-          <p className="mb-3 text-sm text-text-dim print:hidden">
-            {items.length} étiquette{items.length > 1 ? "s" : ""}{items.length >= MAX_LABELS ? ` (limité à ${MAX_LABELS})` : ""} — vérifie l&apos;aperçu puis imprime.
-          </p>
+          <div className="mb-3 flex flex-wrap items-center gap-3 text-sm text-text-dim print:hidden">
+            <span className="font-medium text-foreground">{selected.size}/{items.length} sélectionnée{selected.size > 1 ? "s" : ""}</span>
+            <span className="text-text-muted">— coche les étiquettes à imprimer.</span>
+            <button onClick={selectAll} className="rounded-full bg-surface-alt px-3 py-1 text-xs font-medium text-text-dim hover:bg-surface-hover">Tout sélectionner</button>
+            <button onClick={selectNone} className="rounded-full bg-surface-alt px-3 py-1 text-xs font-medium text-text-dim hover:bg-surface-hover">Aucune</button>
+            {items.length >= MAX_LABELS && <span className="text-text-muted">(limité à {MAX_LABELS})</span>}
+          </div>
           <div className={`grid gap-2 ${colClass}`}>
-            {items.map((it) => (
-              <div key={it.key} className="flex break-inside-avoid flex-col rounded-md border border-foreground/70 bg-white p-2 text-black">
+            {items.map((it) => {
+              const on = selected.has(it.key);
+              return (
+              <div key={it.key} className={`relative flex break-inside-avoid flex-col rounded-md border bg-white p-2 text-black transition ${on ? "border-foreground/70" : "border-dashed border-foreground/30 opacity-40 print:hidden"}`}>
+                <label className="absolute right-1.5 top-1.5 z-10 cursor-pointer print:hidden">
+                  <input type="checkbox" checked={on} onChange={() => toggleOne(it.key)} className="h-4 w-4 accent-[color:var(--brand,#C41E3A)]" />
+                </label>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-black/60">MULTIREX AUTO</p>
                     <p className="truncate text-lg font-bold leading-tight">N° {it.key}</p>
                   </div>
-                  <div className="shrink-0 text-right text-[10px] text-black/70">
+                  <div className="shrink-0 pr-5 text-right text-[10px] text-black/70 print:pr-0">
                     {it.interne ? <p>RAC {it.interne}</p> : null}
                     {it.reception != null ? <p>Réc. {it.reception}</p> : null}
                   </div>
@@ -262,7 +289,8 @@ function EtiquettesInner() {
                   {withPrix ? <span className="font-semibold">{fmtEur(it.prix)}</span> : null}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
