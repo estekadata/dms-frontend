@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Printer, SlidersHorizontal } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
+import { useT } from "@/lib/i18n";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { affectationLabel } from "@/components/moteur-statuts";
@@ -40,6 +41,7 @@ type Inventaire = {
 };
 
 export default function EtatsPage() {
+  const t = useT();
   const [inv, setInv] = useState<Inventaire | null>(null);
   const [loading, setLoading] = useState(true);
   const asOf = new Date();
@@ -120,7 +122,7 @@ export default function EtatsPage() {
 
       {/* Navigation entre états */}
       <div className="mb-5 flex flex-wrap gap-2 print:hidden">
-        <span className="rounded-full bg-brand px-3 py-1.5 text-xs font-medium text-white">Inventaire</span>
+        <span className="rounded-full bg-brand px-3 py-1.5 text-xs font-medium text-white">{t("Inventaire")}</span>
         <Link href="/etats/achats-mensuels" className="rounded-full bg-surface-alt px-3 py-1.5 text-xs font-medium text-text-dim transition hover:bg-surface-hover">
           Achats mensuels
         </Link>
@@ -151,7 +153,7 @@ export default function EtatsPage() {
       </div>
 
       <div className="mb-6 flex items-center gap-2 text-sm text-text-dim">
-        <span className="font-semibold text-foreground">Inventaire du stock</span>
+        <span className="font-semibold text-foreground">{t("Inventaire du stock")}</span>
         <span>· arrêté au {asOf.toLocaleDateString("fr-FR")}</span>
       </div>
 
@@ -167,14 +169,14 @@ export default function EtatsPage() {
           <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
             <Card>
               <CardContent className="p-5">
-                <p className="text-xs font-semibold uppercase text-text-dim">Valorisation totale du stock</p>
+                <p className="text-xs font-semibold uppercase text-text-dim">{t("Valorisation totale du stock")}</p>
                 <p className="text-3xl font-bold text-brand">{fmtEur(inv.motValo + inv.bvValo)}</p>
                 <p className="mt-1 text-xs text-text-muted">au prix d&apos;achat · moteurs + boîtes</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-5">
-                <p className="text-xs font-semibold uppercase text-text-dim">Moteurs en stock</p>
+                <p className="text-xs font-semibold uppercase text-text-dim">{t("Moteurs en stock")}</p>
                 <p className="text-3xl font-bold text-foreground">{inv.motTotal.toLocaleString("fr-FR")}</p>
                 <p className="mt-1 text-xs text-text-muted">
                   dont {inv.motReserves.toLocaleString("fr-FR")} réservés · {fmtEur(inv.motValo)}
@@ -183,7 +185,7 @@ export default function EtatsPage() {
             </Card>
             <Card>
               <CardContent className="p-5">
-                <p className="text-xs font-semibold uppercase text-text-dim">Boîtes en stock</p>
+                <p className="text-xs font-semibold uppercase text-text-dim">{t("Boîtes en stock")}</p>
                 <p className="text-3xl font-bold text-foreground">{inv.bvTotal.toLocaleString("fr-FR")}</p>
                 <p className="mt-1 text-xs text-text-muted">
                   dont {inv.bvReserves.toLocaleString("fr-FR")} réservées · {fmtEur(inv.bvValo)}
@@ -200,14 +202,14 @@ export default function EtatsPage() {
           </div>
 
           {/* Répartition moteurs par affectation */}
-          <h3 className="mb-3 font-semibold text-foreground">Moteurs par affectation</h3>
+          <h3 className="mb-3 font-semibold text-foreground">{t("Moteurs par affectation")}</h3>
           <div className="overflow-hidden rounded-[14px] border border-border bg-surface">
             <table className="w-full text-sm">
               <thead className="bg-surface-alt text-xs uppercase text-text-dim">
                 <tr>
-                  <th className="px-4 py-3 text-left">Affectation</th>
-                  <th className="px-4 py-3 text-center">Nombre</th>
-                  <th className="px-4 py-3 text-right">Valorisation</th>
+                  <th className="px-4 py-3 text-left">{t("Affectation")}</th>
+                  <th className="px-4 py-3 text-center">{t("Nombre")}</th>
+                  <th className="px-4 py-3 text-right">{t("Valorisation")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -221,7 +223,7 @@ export default function EtatsPage() {
               </tbody>
               <tfoot>
                 <tr className="border-t border-border bg-surface-alt font-semibold">
-                  <td className="px-4 py-3 text-foreground">Total moteurs</td>
+                  <td className="px-4 py-3 text-foreground">{t("Total moteurs")}</td>
                   <td className="px-4 py-3 text-center tabular-nums text-foreground">{inv.motTotal.toLocaleString("fr-FR")}</td>
                   <td className="px-4 py-3 text-right tabular-nums text-brand">{fmtEur(inv.motValo)}</td>
                 </tr>

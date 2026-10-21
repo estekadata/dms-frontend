@@ -121,6 +121,20 @@ const EN: Record<string, string> = {
   // Variantes sans accent (grille d'accueil)
   "Receptions": "Receptions",
   "Reservations": "Reservations",
+  // Hub États
+  "Inventaire": "Inventory",
+  "Inventaire du stock": "Stock inventory",
+  "Valorisation totale du stock": "Total stock valuation",
+  "Moteurs en stock": "Engines in stock",
+  "Boîtes en stock": "Gearboxes in stock",
+  "Moteurs par affectation": "Engines by allocation",
+  "Affectation": "Allocation",
+  "Nombre": "Count",
+  "Valorisation": "Valuation",
+  "Total moteurs": "Total engines",
+  "Réceptions / jour": "Receptions / day",
+  "Constructeur d'états": "Report builder",
+  "Démontage & ratio KO": "Dismantling & KO ratio",
   // Chrome / commun
   "Déconnexion": "Log out",
   "Rechercher": "Search",
