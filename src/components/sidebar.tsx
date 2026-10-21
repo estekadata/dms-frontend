@@ -7,7 +7,7 @@ import { useLang, useT } from "@/lib/i18n";
 import {
   LayoutDashboard, TrendingUp, Target, BarChart3, Euro,
   PackageOpen, Search, Cog, ClipboardList, History,
-  Wrench, Building2, Users, LogOut, Inbox, RefreshCw, X, Layers, ShoppingCart, FileText, LayoutGrid, Tag, FileCheck, MapPin, ClipboardCheck,
+  Wrench, Building2, Users, LogOut, Inbox, RefreshCw, X, Layers, ShoppingCart, FileText, LayoutGrid, Tag, FileCheck, MapPin, ClipboardCheck, FileWarning,
 } from "lucide-react";
 
 const navSections = [
@@ -35,6 +35,7 @@ const navSections = [
       { label: "Bon de préparation", href: "/preparation", icon: ClipboardCheck },
       { label: "Étiquettes", href: "/etiquettes", icon: Tag },
       { label: "Historique", href: "/historique", icon: History },
+      { label: "Justificatifs export", href: "/expeditions/justificatifs", icon: FileWarning },
     ],
   },
   {

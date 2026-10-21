@@ -1,7 +1,7 @@
 "use client";
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Printer, Cog, Package, UserRound, FileText } from "lucide-react";
+import { ArrowLeft, Printer, Cog, Package, UserRound, FileText, CheckCircle2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,10 @@ export default function ExpeditionDetailPage({ params }: { params: Promise<{ id:
   const [boites, setBoites] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  // Justificatif de livraison (colonne Supabase)
+  const [justif, setJustif] = useState(false);
+  const [justifErr, setJustifErr] = useState(false);
 
   // Employé / vendeur (colonne Supabase tbl_expeditions.employe)
   const [employe, setEmploye] = useState("");
@@ -152,6 +156,17 @@ export default function ExpeditionDetailPage({ params }: { params: Promise<{ id:
         else setEmploye((empRow as any)?.employe || "");
       }
 
+      // Justificatif de livraison : lecture tolérante (colonne peut ne pas exister)
+      const { data: jRow, error: jErr } = await supabase
+        .from("tbl_expeditions")
+        .select("justificatif_recu")
+        .eq("n_expedition", id)
+        .maybeSingle();
+      if (!cancelled) {
+        if (jErr) setJustifErr(true);
+        else setJustif(!!(jRow as any)?.justificatif_recu);
+      }
+
       // Liste des employés proposés : prénoms déjà utilisés sur les moteurs
       const { data: us } = await supabase
         .from("tbl_moteurs")
@@ -183,6 +198,17 @@ export default function ExpeditionDetailPage({ params }: { params: Promise<{ id:
     setEmpError(false);
     setEmpSaved(true);
     setTimeout(() => setEmpSaved(false), 2000);
+  }
+
+  async function toggleJustif() {
+    const next = !justif;
+    const { error } = await supabase
+      .from("tbl_expeditions")
+      .update({ justificatif_recu: next, justificatif_date: next ? new Date().toISOString() : null })
+      .eq("n_expedition", id);
+    if (error) { setJustifErr(true); return; }
+    setJustifErr(false);
+    setJustif(next);
   }
 
   if (loading) return <div className="py-16 text-center text-text-muted">Chargement de l&apos;expédition…</div>;
@@ -319,6 +345,18 @@ export default function ExpeditionDetailPage({ params }: { params: Promise<{ id:
         </Button>
         {empSaved && <span className="text-xs text-emerald-600">Enregistré ✓</span>}
         {empError && <span className="text-xs text-amber-600">Colonne « employe » manquante (migration SQL à exécuter).</span>}
+      </div>
+
+      {/* Justificatif de livraison / export */}
+      <div className="mb-6 flex flex-wrap items-center gap-2 print:hidden">
+        <button
+          onClick={toggleJustif}
+          className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${justif ? "border-[rgba(52,211,153,0.3)] bg-[rgba(52,211,153,0.10)] text-emerald-600" : "border-amber-500/30 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20"}`}
+        >
+          {justif ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
+          {justif ? "Justificatif de livraison reçu" : "Justificatif de livraison manquant"}
+        </button>
+        {justifErr && <span className="text-xs text-amber-600">Colonne « justificatif_recu » manquante (migration SQL à exécuter).</span>}
       </div>
 
       {/* KPIs */}
