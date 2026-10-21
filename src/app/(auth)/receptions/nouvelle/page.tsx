@@ -2,7 +2,7 @@
 import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, Trash2, Search } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Search, FileSpreadsheet } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +10,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ClientsInteresses } from "@/components/clients-interesses";
+import { parseXlsxRows, mapHeaders, toNumber } from "@/lib/import-xlsx";
+
+const FICHE_ALIASES: Record<string, string[]> = {
+  code_moteur: ["code moteur", "code", "moteur", "reference", "ref", "type"],
+  num_serie: ["serie", "numero de serie", "n serie", "num serie", "no serie"],
+  prix_achat: ["prix achat", "prix", "montant", "tarif"],
+  etat: ["etat", "observation", "obs", "etat obs", "remarque"],
+  avec_bv: ["bv", "avec bv", "boite", "boite de vitesse"],
+};
 
 type FournisseurLite = { n_fournisseur: number; nom_fournisseur: string | null };
 
@@ -107,6 +116,39 @@ export default function NouvelleReceptionPage() {
 
   function addMoteur() {
     setMoteurs((prev) => [...prev, newMoteur()]);
+  }
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+  async function importFiche(e: React.ChangeEvent<HTMLInputElement>) {
+    setImportMsg(null);
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    try {
+      const raw = await parseXlsxRows(f);
+      if (raw.length === 0) { setImportMsg("Fichier vide ou illisible."); return; }
+      const headers = Object.keys(raw[0] as object);
+      const m = mapHeaders(headers, FICHE_ALIASES);
+      if (!m.code_moteur && !m.num_serie) { setImportMsg("Aucune colonne « code moteur » ou « n° série » trouvée dans la fiche."); return; }
+      const g = (r: Record<string, unknown>, field: string) => (m[field] ? r[m[field]] : null);
+      const drafts: MoteurDraft[] = raw.map((r) => {
+        const row = r as Record<string, unknown>;
+        const prix = toNumber(g(row, "prix_achat"));
+        const bvRaw = String(g(row, "avec_bv") ?? "").trim().toLowerCase();
+        return {
+          key: Math.random().toString(36).slice(2),
+          code_moteur: g(row, "code_moteur") != null ? String(g(row, "code_moteur")).trim() : "",
+          num_serie: g(row, "num_serie") != null ? String(g(row, "num_serie")).trim() : "",
+          prix_achat: prix != null ? String(prix) : "",
+          etat: g(row, "etat") != null ? String(g(row, "etat")).trim() : "",
+          avec_bv: ["oui", "o", "yes", "y", "1", "true", "x"].includes(bvRaw),
+        };
+      }).filter((d) => d.code_moteur || d.num_serie);
+      if (drafts.length === 0) { setImportMsg("Aucune ligne moteur exploitable dans le fichier."); return; }
+      setMoteurs(drafts);
+      setImportMsg(`${drafts.length} moteur(s) importé(s) depuis la fiche — vérifie puis enregistre.`);
+    } catch (err) {
+      setImportMsg(err instanceof Error ? err.message : "Erreur de lecture du fichier.");
+    }
   }
   function removeMoteur(key: string) {
     setMoteurs((prev) => (prev.length > 1 ? prev.filter((m) => m.key !== key) : prev));
@@ -428,10 +470,18 @@ export default function NouvelleReceptionPage() {
         <CardContent className="p-5">
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-semibold text-foreground">Moteurs reçus ({moteurs.length})</h3>
-            <Button type="button" variant="outline" size="sm" onClick={addMoteur}>
-              <Plus size={14} className="mr-1" /> Ajouter un moteur
-            </Button>
+            <div className="flex items-center gap-2">
+              <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-border bg-surface-alt px-3 py-1.5 text-sm text-foreground hover:bg-surface-hover">
+                <FileSpreadsheet size={14} /> Importer fiche (Excel)
+                <input type="file" accept=".xlsx,.xls,.csv" onChange={importFiche} className="hidden" />
+              </label>
+              <Button type="button" variant="outline" size="sm" onClick={addMoteur}>
+                <Plus size={14} className="mr-1" /> Ajouter un moteur
+              </Button>
+            </div>
           </div>
+
+          {importMsg && <div className="mb-3 rounded-lg bg-surface-alt px-3 py-2 text-xs text-text-dim">{importMsg}</div>}
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
