@@ -327,7 +327,7 @@ export default function MoteursPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-foreground">{d.code}</p>
-                      <p className="font-mono text-xs text-text-muted">n°{m.n_moteur}</p>
+                      <Link href={`/moteurs/${m.n_moteur}`} className="font-mono text-xs text-brand hover:underline">n°{m.n_moteur}</Link>
                     </div>
                     {statusBadge(d)}
                   </div>
@@ -367,7 +367,7 @@ export default function MoteursPage() {
                     const d = derive(m);
                     return (
                       <tr key={m.n_moteur} className="transition-colors hover:bg-surface-hover">
-                        <td className="px-4 py-3 font-mono text-xs text-text-muted">{m.n_moteur}</td>
+                        <td className="px-4 py-3 font-mono text-xs"><Link href={`/moteurs/${m.n_moteur}`} className="text-brand hover:underline">{m.n_moteur}</Link></td>
                         <td className="px-4 py-3">
                           <div className="font-semibold text-foreground">{d.code}</div>
                           <MoteurStatuts compo={m.compo_moteur} etat={m.etat_moteur} affect={m.n_affectation} className="mt-1" />
